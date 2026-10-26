@@ -17,14 +17,12 @@ const FIELDS: { key: keyof Settings; label: string; hint: string; step: number; 
   { key: "runHour", label: "Daily run hour", hint: "Local hour, 0 to 23, when Cadence screens the day's messages.", step: 1, min: 0, max: 23 },
   { key: "flagThreshold", label: "Flag threshold", hint: "Messages scoring below this (0 to 3) go to the queue.", step: 0.1, min: 0, max: 3 },
   { key: "minWords", label: "Minimum words", hint: "Shorter messages are not used for practice.", step: 1, min: 0 },
-  { key: "autoCoach", label: "Auto-coach count", hint: "How many queued messages the daily run coaches ahead of time.", step: 1, min: 0 },
 ];
 
 const toForm = (s: Settings): Form => ({
   runHour: String(s.runHour),
   flagThreshold: String(s.flagThreshold),
   minWords: String(s.minWords),
-  autoCoach: String(s.autoCoach),
 });
 
 function parse(f: Form): Settings | string {
@@ -33,12 +31,10 @@ function parse(f: Form): Settings | string {
     runHour: n(f.runHour),
     flagThreshold: n(f.flagThreshold),
     minWords: n(f.minWords),
-    autoCoach: n(f.autoCoach),
   };
   if (!Number.isInteger(s.runHour) || s.runHour < 0 || s.runHour > 23) return "Run hour must be a whole number from 0 to 23.";
   if (!(s.flagThreshold >= 0 && s.flagThreshold <= 3)) return "Flag threshold must be between 0 and 3.";
   if (!Number.isInteger(s.minWords) || s.minWords < 0) return "Minimum words must be a whole number, 0 or more.";
-  if (!Number.isInteger(s.autoCoach) || s.autoCoach < 0) return "Auto-coach count must be a whole number, 0 or more.";
   return s;
 }
 

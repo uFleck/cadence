@@ -33,17 +33,17 @@ export function MessageCard({ message, notify, onReviewed }: { message: Message;
   const screen = message.screen;
   const latest = attempts[attempts.length - 1];
 
-  const coach = async () => {
+  /** Reviews the latest saved version. Also what Retry runs, since the version is already saved by then. */
+  const coach = async (newVersion?: string) => {
     setBusy(true);
     setCoachError(null);
     try {
-      const text = draft.trim();
-      if (text) {
-        const saved = await api.saveAttempt(message.id, text);
+      if (newVersion) {
+        const saved = await api.saveAttempt(message.id, newVersion);
         setAttempts((list) => [...list, saved]);
         setDraft("");
       }
-      setCoaching(await api.coachMessage(message.id, redoing));
+      setCoaching(await api.coachMessage(message.id));
       setShowRewrites(false);
       setRedoing(false);
     } catch (e) {
@@ -127,7 +127,7 @@ export function MessageCard({ message, notify, onReviewed }: { message: Message;
               onChange={(e) => setDraft(e.target.value)}
             />
             <div className="card-actions">
-              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void coach()}>
+              <button type="button" className="btn btn-primary" disabled={busy || !draft.trim()} onClick={() => void coach(draft.trim())}>
                 <i className={busy ? "ph ph-spinner spin" : "ph ph-sparkle"} aria-hidden="true" />
                 {busy ? "Coaching" : "Show suggestions"}
               </button>
@@ -283,7 +283,7 @@ export function MessageCard({ message, notify, onReviewed }: { message: Message;
             </motion.section>
 
             <motion.section variants={rise} className="why">
-              <h3>What was off</h3>
+              <h3>About your version</h3>
               <p>{coaching.explanation}</p>
             </motion.section>
 

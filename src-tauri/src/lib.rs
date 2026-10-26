@@ -70,16 +70,12 @@ fn list_messages(core: Shared<'_>, query: MessageQuery) -> Result<Vec<Message>, 
 }
 
 #[tauri::command]
-async fn coach_message(core: Shared<'_>, id: String, force: bool) -> Result<Coaching, String> {
+async fn coach_message(core: Shared<'_>, id: String) -> Result<Coaching, String> {
     let message = core.db.get_message(&id).map_err(fail)?.ok_or("That message no longer exists")?;
-    if let Some(existing) = message.coaching {
-        if !force {
-            return Ok(existing);
-        }
-    }
+    let attempt = message.attempts.last().ok_or("Write your version first")?;
     let claude = core.claude.as_ref().ok_or("Claude Code CLI not found on PATH")?;
     let hint = message.screen.as_ref().map(|s| s.issue);
-    let coaching = coach::coach(claude, &core.coach_dir, &message.text, hint, now_ms()).await?;
+    let coaching = coach::coach(claude, &core.coach_dir, &message.text, &attempt.text, hint, now_ms()).await?;
     core.db.save_coaching(&id, &coaching).map_err(fail)?;
     Ok(coaching)
 }

@@ -41,7 +41,7 @@ export interface Rewrite {
 
 export interface Coaching {
   rewrites: Rewrite[];
-  /** What was off in the original, in two or three sentences. */
+  /** What still sounds off in the user's new version, or why it sounds natural, in two or three sentences. */
   explanation: string;
   /** One reusable rule or phrase to remember. */
   tip: string;
@@ -160,11 +160,9 @@ export interface Settings {
   flagThreshold: number;
   /** Shortest message, in words, that counts as practice material. */
   minWords: number;
-  /** How many queued messages the daily run coaches ahead of time. */
-  autoCoach: number;
 }
 
-export type RunPhase = "ingest" | "screen" | "coach" | "done" | "error";
+export type RunPhase = "ingest" | "screen" | "done" | "error";
 
 export interface RunProgress {
   phase: RunPhase;
@@ -234,7 +232,7 @@ export const api = {
   overview: () => invoke<Overview>("overview"),
   listMessages: (query: MessageQuery) => invoke<Message[]>("list_messages", { query }),
   /** `force` coaches again and replaces the saved coaching; the old one stays if the new call fails. */
-  coachMessage: (id: string, force = false) => invoke<Coaching>("coach_message", { id, force }),
+  coachMessage: (id: string) => invoke<Coaching>("coach_message", { id }),
   saveAttempt: (id: string, text: string) => invoke<Attempt>("save_attempt", { id, text }),
   markReviewed: (id: string, reviewed: boolean) => invoke<void>("mark_reviewed", { id, reviewed }),
   patterns: () => invoke<Patterns>("patterns"),

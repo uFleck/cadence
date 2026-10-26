@@ -270,12 +270,11 @@ pub struct Settings {
     pub run_hour: u32,
     pub flag_threshold: f64,
     pub min_words: i64,
-    pub auto_coach: i64,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { run_hour: 22, flag_threshold: 2.0, min_words: 8, auto_coach: 5 }
+        Settings { run_hour: 22, flag_threshold: 2.0, min_words: 8 }
     }
 }
 
@@ -285,7 +284,6 @@ impl Settings {
             run_hour: self.run_hour.min(23),
             flag_threshold: self.flag_threshold.clamp(0.0, 3.0),
             min_words: self.min_words.clamp(1, 200),
-            auto_coach: self.auto_coach.clamp(0, 50),
         }
     }
 }
@@ -295,7 +293,6 @@ impl Settings {
 pub enum RunPhase {
     Ingest,
     Screen,
-    Coach,
     Done,
     Error,
 }

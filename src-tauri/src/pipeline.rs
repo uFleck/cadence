@@ -1,6 +1,6 @@
 use crate::db::Db;
 use crate::model::{RunPhase, RunProgress};
-use crate::{coach, ingest, jev, schedule};
+use crate::{ingest, jev, schedule};
 use chrono::Local;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -43,7 +43,6 @@ fn progress(app: &AppHandle, phase: RunPhase, done: usize, total: usize, message
 pub struct Summary {
     pub ingested: usize,
     pub screened: usize,
-    pub coached: usize,
     pub failed: usize,
     pub queued: i64,
 }
@@ -51,14 +50,14 @@ pub struct Summary {
 impl Summary {
     pub fn detail(&self) -> String {
         format!(
-            "{} new, {} screened, {} coached, {} failed, {} in the queue",
-            self.ingested, self.screened, self.coached, self.failed, self.queued
+            "{} new, {} screened, {} failed, {} in the queue",
+            self.ingested, self.screened, self.failed, self.queued
         )
     }
 }
 
-/// Ingest, screen with TypeSafe, coach the worst few with Claude. Every step is safe to repeat:
-/// ingestion dedupes by text, screening only touches unscreened rows, coaching only uncoached ones.
+/// Ingest and screen with TypeSafe. Coaching waits for the user to write a new version. Every step is
+/// safe to repeat: ingestion dedupes by text, screening only touches unscreened rows.
 async fn steps(core: &Arc<Core>, app: &AppHandle) -> Result<Summary, String> {
     let settings = core.db.settings().map_err(|e| e.to_string())?;
 
@@ -105,30 +104,9 @@ async fn steps(core: &Arc<Core>, app: &AppHandle) -> Result<Summary, String> {
     }
     let _ = app.emit(MESSAGES_CHANGED, ());
 
-    let mut coached = 0;
-    if let Some(claude) = &core.claude {
-        let todo = core.db.queue_uncoached(&settings, settings.auto_coach).map_err(|e| e.to_string())?;
-        let total = todo.len();
-        for (i, m) in todo.iter().enumerate() {
-            progress(app, RunPhase::Coach, i, total, None);
-            let hint = m.screen.as_ref().map(|s| s.issue);
-            match coach::coach(claude, &core.coach_dir, &m.text, hint, now_ms()).await {
-                Ok(c) => {
-                    core.db.save_coaching(&m.id, &c).map_err(|e| e.to_string())?;
-                    coached += 1;
-                }
-                Err(e) => {
-                    failed += 1;
-                    last_error = Some(e);
-                }
-            }
-        }
-        let _ = app.emit(MESSAGES_CHANGED, ());
-    }
-
     let queued = core.db.counts(&settings).map_err(|e| e.to_string())?.queued;
-    let summary = Summary { ingested, screened, coached, failed, queued };
-    if summary.failed > 0 && summary.screened == 0 && summary.coached == 0 {
+    let summary = Summary { ingested, screened, failed, queued };
+    if summary.failed > 0 && summary.screened == 0 {
         return Err(last_error.unwrap_or_else(|| "every request failed".into()));
     }
     Ok(summary)
