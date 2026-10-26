@@ -211,6 +211,8 @@
   box-shadow: var(--ring), 0 0 22px -4px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
+.settings.key-card { margin-top: 18px; }
+.settings.key-card .field { grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); }
 .save-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 0 4px; }
 .save-row .btn { min-width: 112px; height: 40px; }
 .save-row .btn.saving:disabled { opacity: 0.85; }

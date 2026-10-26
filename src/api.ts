@@ -164,6 +164,9 @@ export interface Settings {
   autoCoach: number;
 }
 
+/** Where the TypeSafe key in use comes from: typed into Cadence, the TYPESAFE_API_KEY variable, or nowhere. */
+export type KeySource = "app" | "env" | "none";
+
 export type RunPhase = "ingest" | "screen" | "coach" | "done" | "error";
 
 export interface RunProgress {
@@ -240,6 +243,12 @@ export const api = {
   patterns: () => invoke<Patterns>("patterns"),
   getSettings: () => invoke<Settings>("get_settings"),
   setSettings: (settings: Settings) => invoke<Settings>("set_settings", { settings }),
+  /** The key itself never reaches the UI, only where it comes from. */
+  typesafeKeySource: () => invoke<KeySource>("typesafe_key_source"),
+  /** Stores the key in the OS credential store. */
+  setTypesafeKey: (key: string) => invoke<KeySource>("set_typesafe_key", { key }),
+  /** Removes the stored key; a TYPESAFE_API_KEY variable, if any, takes over. */
+  clearTypesafeKey: () => invoke<KeySource>("clear_typesafe_key"),
   runNow: () => invoke<void>("run_now"),
   /** Every question, built-in and custom, ordered by topic then id. */
   interviewQuestions: () => invoke<InterviewQuestion[]>("interview_questions"),

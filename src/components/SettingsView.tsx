@@ -3,6 +3,7 @@ import { AnimatePresence, motion, type Variants } from "motion/react";
 import { api, type Settings } from "../api";
 import { EASE, rise, stagger } from "../motion";
 import { errorText, type Notify } from "./shared";
+import { TypeSafeKey } from "./TypeSafeKey";
 import "../styles/patterns.css";
 
 type Form = Record<keyof Settings, string>;
@@ -85,6 +86,7 @@ export function SettingsView({ notify, onSaved }: { notify: Notify; onSaved: () 
   };
 
   return (
+    <>
     <motion.form
       className="settings"
       variants={stagger(0.08)}
@@ -175,5 +177,7 @@ export function SettingsView({ notify, onSaved }: { notify: Notify; onSaved: () 
         </div>
       </motion.div>
     </motion.form>
+    <TypeSafeKey notify={notify} onChanged={onSaved} />
+    </>
   );
 }
