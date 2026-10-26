@@ -1,7 +1,7 @@
 /* Dev-only stand-in for the Tauri backend, so the UI can be driven in a plain browser (`pnpm dev`).
    Twelve work messages (eight to practise, one reviewed, two not screened yet). A run is simulated and
    emits run-progress and messages-changed like the real one. `?nosetup` shows the missing-key and missing-CLI banners. */
-import type { Attempt, Coaching, InterviewAnswer, InterviewFeedback, InterviewQuestion, InterviewTopic, Issue, Message, MessageQuery, Overview, Patterns, RunInfo, RunPhase, RunProgress, Screen, Settings } from "../api";
+import type { Attempt, Coaching, InterviewAnswer, InterviewFeedback, InterviewQuestion, InterviewTopic, Issue, KeySource, Message, MessageQuery, Overview, Patterns, RunInfo, RunPhase, RunProgress, Screen, Settings } from "../api";
 
 type Handler = (e: { event: string; id: number; payload: unknown }) => void;
 
@@ -175,6 +175,7 @@ export function installMock() {
   let cb = 1;
   let attemptSeq = 1;
   let settings: Settings = { runHour: 21, flagThreshold: 2, minWords: 4 };
+  let keySource: KeySource = SETUP_MISSING ? "none" : "app";
   let running = false;
   let lastRun: RunInfo = {
     day: localDay(Date.now() - DAY),
@@ -258,7 +259,7 @@ export function installMock() {
     lastRun,
     nextRunAt: nextRunAt(),
     running,
-    typesafeConfigured: !SETUP_MISSING,
+    typesafeConfigured: keySource !== "none",
     claudeFound: !SETUP_MISSING,
   });
 
@@ -375,6 +376,16 @@ export function installMock() {
       settings = { ...(a.settings as Settings) };
       emit("messages-changed", undefined);
       return { ...settings };
+    },
+    typesafe_key_source: () => keySource,
+    set_typesafe_key: (a) => {
+      if (!String(a.key).trim()) throw "Paste your TypeSafe API key first";
+      keySource = "app";
+      return keySource;
+    },
+    clear_typesafe_key: () => {
+      keySource = "none";
+      return keySource;
     },
     run_now: () => {
       if (!running) void runPipeline();

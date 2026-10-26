@@ -15,7 +15,7 @@ Tauri 2 desktop app (React 19 + Vite, Rust backend, SQLite). It reads the Englis
 ## Rules
 
 - **Never use native dialogs in the desktop app.** No `alert`, `confirm`, `prompt`, or `@tauri-apps/plugin-dialog`. Confirmations and errors use the in-app `Dialog`.
-- **The TypeSafe key comes only from the `TYPESAFE_API_KEY` environment variable.** Never write it to a file, a log or the database.
+- **Every install uses its own TypeSafe key; none is ever bundled in the build, the repo or CI.** The user pastes it in Settings and `jev.rs` keeps it in the OS credential store (Windows Credential Manager, via `keyring`; a debug build uses a separate entry). The `TYPESAFE_API_KEY` environment variable is only the fallback (it is also what `jev_eval` uses when nothing is saved). Never write the key to a file, a log or the database, and never send it back to the UI: the frontend only learns its source (`app`, `env`, `none`).
 - **Cadence must never ingest its own prompts.** The `claude -p` calls run in `<app data>/coach`, and ingestion skips every message whose `cwd` is under that folder. Keep both in step if either changes.
 - Naturalness is always shown as a number next to the meter; colour is never the only signal.
 - Run the app through Spawner (`spawner:tauri dev`), not a terminal.

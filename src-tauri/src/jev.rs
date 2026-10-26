@@ -1,4 +1,5 @@
 use crate::model::{Issue, Screen};
+use serde::Serialize;
 use serde_json::{json, Value};
 use std::time::Duration;
 
@@ -43,11 +44,76 @@ fn user_env(_name: &str) -> Option<String> {
     None
 }
 
+/// Where the key in use came from. The key the user typed into Cadence wins over the environment.
+#[derive(Serialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum KeySource {
+    App,
+    Env,
+    None,
+}
+
+/// The key lives only in the OS credential store: never in the database, a file or a log. A debug
+/// build uses its own entry so it cannot read or overwrite the installed app's key.
+#[cfg(windows)]
+fn entry() -> Result<keyring::Entry, String> {
+    let service = if cfg!(debug_assertions) { "Cadence (dev)" } else { "Cadence" };
+    keyring::Entry::new(service, "typesafe-api-key").map_err(|e| e.to_string())
+}
+
+#[cfg(windows)]
+fn stored_key() -> Option<String> {
+    entry().ok()?.get_password().ok()
+}
+
+#[cfg(windows)]
+pub fn save_key(key: &str) -> Result<(), String> {
+    entry()?.set_password(key).map_err(|e| format!("Could not save the key: {e}"))
+}
+
+#[cfg(windows)]
+pub fn clear_key() -> Result<(), String> {
+    match entry()?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(format!("Could not remove the key: {e}")),
+    }
+}
+
+#[cfg(not(windows))]
+fn stored_key() -> Option<String> {
+    None
+}
+
+#[cfg(not(windows))]
+pub fn save_key(_key: &str) -> Result<(), String> {
+    Err("Saving the key in Cadence is only supported on Windows; set the TYPESAFE_API_KEY environment variable instead".into())
+}
+
+#[cfg(not(windows))]
+pub fn clear_key() -> Result<(), String> {
+    Ok(())
+}
+
+fn clean(key: Option<String>) -> Option<String> {
+    key.map(|k| k.trim().to_string()).filter(|k| !k.is_empty())
+}
+
+fn env_key() -> Option<String> {
+    clean(user_env(KEY_VAR).or_else(|| std::env::var(KEY_VAR).ok()))
+}
+
 pub fn api_key() -> Option<String> {
-    user_env(KEY_VAR)
-        .or_else(|| std::env::var(KEY_VAR).ok())
-        .map(|k| k.trim().to_string())
-        .filter(|k| !k.is_empty())
+    clean(stored_key()).or_else(env_key)
+}
+
+pub fn key_source() -> KeySource {
+    if clean(stored_key()).is_some() {
+        KeySource::App
+    } else if env_key().is_some() {
+        KeySource::Env
+    } else {
+        KeySource::None
+    }
 }
 
 pub struct Jev {

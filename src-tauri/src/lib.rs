@@ -112,6 +112,28 @@ fn set_settings(core: Shared<'_>, settings: Settings) -> Result<Settings, String
     Ok(settings)
 }
 
+/// Never returns the key itself, only where it comes from.
+#[tauri::command]
+fn typesafe_key_source() -> jev::KeySource {
+    jev::key_source()
+}
+
+#[tauri::command]
+fn set_typesafe_key(key: String) -> Result<jev::KeySource, String> {
+    let key = key.trim();
+    if key.is_empty() {
+        return Err("Paste your TypeSafe API key first".into());
+    }
+    jev::save_key(key)?;
+    Ok(jev::key_source())
+}
+
+#[tauri::command]
+fn clear_typesafe_key() -> Result<jev::KeySource, String> {
+    jev::clear_key()?;
+    Ok(jev::key_source())
+}
+
 #[tauri::command]
 fn run_now(app: AppHandle, core: Shared<'_>) -> Result<(), String> {
     if core.running.load(Ordering::SeqCst) {
@@ -346,6 +368,9 @@ pub fn run() {
             patterns,
             get_settings,
             set_settings,
+            typesafe_key_source,
+            set_typesafe_key,
+            clear_typesafe_key,
             run_now,
             interview_questions,
             next_interview_question,

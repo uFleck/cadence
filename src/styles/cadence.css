@@ -284,6 +284,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 0; 
   font-size: 13px;
 }
 .banner i { color: var(--mid); font-size: 17px; }
+.banner .btn { margin-left: auto; }
 .banner-wrap { overflow: hidden; }
 .banner-wrap > .banner { margin-bottom: 14px; }
 

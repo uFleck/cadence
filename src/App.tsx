@@ -166,7 +166,10 @@ export default function App() {
             >
               <div className="banner" role="alert">
                 <i className="ph-fill ph-warning" aria-hidden="true" />
-                Set the TYPESAFE_API_KEY environment variable and restart Cadence
+                Add your TypeSafe API key in Settings
+                <button type="button" className="btn" onClick={() => setView("settings")}>
+                  Open Settings
+                </button>
               </div>
             </motion.div>
           )}

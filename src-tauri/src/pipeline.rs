@@ -68,7 +68,7 @@ async fn steps(core: &Arc<Core>, app: &AppHandle) -> Result<Summary, String> {
         .map_err(|e| e.to_string())??;
     let _ = app.emit(MESSAGES_CHANGED, ());
 
-    let key = jev::api_key().ok_or("TYPESAFE_API_KEY is not set")?;
+    let key = jev::api_key().ok_or("No TypeSafe API key; add one in Settings")?;
     let jev = Arc::new(jev::Jev::new(key));
     let pending = core.db.unscreened(settings.min_words, SCREEN_PER_RUN).map_err(|e| e.to_string())?;
     let total = pending.len();
