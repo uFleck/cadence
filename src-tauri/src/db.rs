@@ -306,21 +306,6 @@ impl Db {
         Ok(())
     }
 
-    pub fn queue_uncoached(&self, settings: &Settings, limit: i64) -> Result<Vec<Message>> {
-        let conn = self.conn();
-        let queue = queue_where();
-        let sql = format!(
-            "{MESSAGE_SELECT} WHERE {queue} AND c.message_id IS NULL
-             ORDER BY s.naturalness ASC, m.ts DESC LIMIT ?3"
-        );
-        let mut stmt = conn.prepare(&sql)?;
-        let rows = stmt.query_map(params![settings.flag_threshold, settings.min_words, limit], read_message)?;
-        let mut messages = rows.collect::<Result<Vec<_>>>()?;
-        drop(stmt);
-        attach_attempts(&conn, &mut messages)?;
-        Ok(messages)
-    }
-
     pub fn list_messages(&self, query: &MessageQuery, settings: &Settings) -> Result<Vec<Message>> {
         let conn = self.conn();
         let limit = query.limit.clamp(1, 500);

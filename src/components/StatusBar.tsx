@@ -7,7 +7,6 @@ import { ago, when } from "./shared";
 const PHASE: Record<RunPhase, string> = {
   ingest: "Reading messages",
   screen: "Screening",
-  coach: "Coaching",
   done: "Finished",
   error: "Failed",
 };

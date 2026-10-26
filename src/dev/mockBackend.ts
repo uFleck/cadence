@@ -174,7 +174,7 @@ export function installMock() {
   const listeners = new Map<string, Handler[]>();
   let cb = 1;
   let attemptSeq = 1;
-  let settings: Settings = { runHour: 21, flagThreshold: 2, minWords: 4, autoCoach: 3 };
+  let settings: Settings = { runHour: 21, flagThreshold: 2, minWords: 4 };
   let keySource: KeySource = SETUP_MISSING ? "none" : "app";
   let running = false;
   let lastRun: RunInfo = {
@@ -343,13 +343,8 @@ export function installMock() {
       m.screen = PENDING_SCREEN[m.id] ?? screen(2.5, "none");
       progress("screen", i + 1, pending.length);
     }
-    const coachN = Math.min(settings.autoCoach, list({ filter: "queue", limit: 50, offset: 0 }).length);
-    for (let i = 1; i <= coachN; i++) {
-      await sleep(500);
-      progress("coach", i, coachN);
-    }
     running = false;
-    lastRun = { day: localDay(startedAt), startedAt, finishedAt: Date.now(), ok: true, detail: `Screened ${pending.length}, coached ${coachN}` };
+    lastRun = { day: localDay(startedAt), startedAt, finishedAt: Date.now(), ok: true, detail: `Screened ${pending.length}` };
     emit("messages-changed", undefined);
     progress("done", pending.length, pending.length);
   };
@@ -360,6 +355,7 @@ export function installMock() {
     coach_message: async (a) => {
       await sleep(1500);
       const m = find(a.id);
+      if (m.attempts.length === 0) throw new Error("Write your version first");
       const c = COACH[m.id];
       if (!c) throw new Error("mock: no coaching written for this message");
       m.coaching = c;

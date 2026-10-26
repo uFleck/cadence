@@ -14,11 +14,13 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 const SYSTEM_PROMPT: &str = "You are an English writing coach for a software engineer whose first language is Brazilian Portuguese. \
 They want to sound natural when talking to colleagues and senior people at work. \
-You get one message they wrote and a hint about what may sound off. \
+You get one message they wrote, the new version they wrote after reading it again, and a hint about what may sound off in the original. \
+Review their new version, not the original: say what still sounds off in it, and if it already sounds natural, say so and say what they improved. \
 Keep their meaning and level of detail. Do not add content. Do not make it more formal than needed. \
-If the message already sounds natural, say so, and make the rewrites small variations. \
+If the new version already sounds natural, make the rewrites small variations. \
 File names such as Program.cs and site names such as github.com stand in for full paths and links that were shortened on purpose: keep the names as they are in the rewrites and do not comment on them. \
-Explain in plain words, and mention the Portuguese pattern behind a mistake when there is one.";
+Explain in plain words, and mention the Portuguese pattern behind a mistake when there is one. \
+When you quote their words, use single quotes. Never write a backslash.";
 
 pub fn find_claude() -> Option<PathBuf> {
     let on_path = std::env::var_os("PATH")
@@ -61,16 +63,17 @@ fn schema() -> Value {
     })
 }
 
-fn user_prompt(text: &str, hint: Option<Issue>) -> String {
+fn user_prompt(original: &str, attempt: &str, hint: Option<Issue>) -> String {
     let hint = match hint {
         Some(Issue::None) | None => "none".to_string(),
         Some(i) => i.key().to_string(),
     };
     format!(
-        "Message:\n\"\"\"\n{text}\n\"\"\"\n\nHint from an automatic screen (may be wrong): {hint}\n\n\
-         Return two rewrites, one casual (how you would say it in a chat with a teammate) and one professional \
-         (for a manager or client). Then a short explanation of what sounded off (two or three sentences), \
-         one reusable tip to remember, and the main issue."
+        "Original message:\n\"\"\"\n{original}\n\"\"\"\n\nTheir new version:\n\"\"\"\n{attempt}\n\"\"\"\n\n\
+         Hint from an automatic screen of the original (may be wrong): {hint}\n\n\
+         Return two rewrites of their new version, one casual (how you would say it in a chat with a teammate) and one \
+         professional (for a manager or client). Then a short explanation of what still sounds off in the new version, \
+         or why it sounds natural (two or three sentences), one reusable tip to remember, and the main issue of the original."
     )
 }
 
@@ -105,6 +108,12 @@ pub fn extract_payload(stdout: &str) -> Result<Value, String> {
     }
 }
 
+/// The model sometimes escapes the quotes it writes inside a JSON string twice, which leaves a literal
+/// backslash before the quote in the text. Prose never wants that, so drop it.
+fn clean(s: String) -> String {
+    s.replace("\\\"", "\"")
+}
+
 fn parse_output(stdout: &str, hint: Option<Issue>, now: i64) -> Result<Coaching, String> {
     let payload = extract_payload(stdout)?;
     let coached: Coached = serde_json::from_value(payload).map_err(|e| format!("coaching has the wrong shape: {e}"))?;
@@ -112,18 +121,19 @@ fn parse_output(stdout: &str, hint: Option<Issue>, now: i64) -> Result<Coaching,
         return Err("coaching has no rewrites".into());
     }
     Ok(Coaching {
-        rewrites: coached.rewrites,
-        explanation: coached.explanation,
-        tip: coached.tip,
+        rewrites: coached.rewrites.into_iter().map(|r| Rewrite { text: clean(r.text), ..r }).collect(),
+        explanation: clean(coached.explanation),
+        tip: clean(coached.tip),
         issue: Issue::parse(&coached.issue).or(hint).unwrap_or(Issue::None),
         created_at: now,
     })
 }
 
-/// Asks Claude Code (the user's own login) for rewrites and an explanation. `cwd` must be a folder
-/// that ingestion skips, so the call does not end up in the user's practice material.
-pub async fn coach(claude: &Path, cwd: &Path, text: &str, hint: Option<Issue>, now: i64) -> Result<Coaching, String> {
-    let stdout = run_claude(claude, cwd, SYSTEM_PROMPT, &schema(), &user_prompt(text, hint)).await?;
+/// Asks Claude Code (the user's own login) to review the user's new version of a message: rewrites and an
+/// explanation. `cwd` must be a folder that ingestion skips, so the call does not end up in the user's
+/// practice material.
+pub async fn coach(claude: &Path, cwd: &Path, original: &str, attempt: &str, hint: Option<Issue>, now: i64) -> Result<Coaching, String> {
+    let stdout = run_claude(claude, cwd, SYSTEM_PROMPT, &schema(), &user_prompt(original, attempt, hint)).await?;
     parse_output(&stdout, hint, now)
 }
 
@@ -187,6 +197,21 @@ mod tests {
     fn tolerates_a_code_fence_and_falls_back_to_the_hint_for_an_unknown_issue() {
         let env = r#"{"is_error":false,"result":"```json\n{\"rewrites\":[{\"register\":\"casual\",\"text\":\"x\"}],\"explanation\":\"e\",\"tip\":\"t\",\"issue\":\"vibes\"}\n```"}"#;
         assert_eq!(parse_output(env, Some(Issue::WordOrder), 0).unwrap().issue, Issue::WordOrder);
+    }
+
+    #[test]
+    fn drops_the_backslash_the_model_puts_before_a_quote() {
+        let env = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"say \\\"hi\\\""}],"explanation":"The problem is \\\"take this\\\".","tip":"Use \\\"look at\\\".","issue":"grammar"}}"#;
+        let c = parse_output(env, None, 0).unwrap();
+        assert_eq!(c.rewrites[0].text, "say \"hi\"");
+        assert_eq!(c.explanation, "The problem is \"take this\".");
+        assert_eq!(c.tip, "Use \"look at\".");
+    }
+
+    #[test]
+    fn the_prompt_carries_both_the_original_and_the_new_version() {
+        let p = user_prompt("take this", "look at this", None);
+        assert!(p.contains("take this") && p.contains("look at this"));
     }
 
     #[test]
