@@ -1,0 +1,273 @@
+/*
+  Messages: the list, the open-message panel and the message card.
+  The card is width-agnostic: it is shown in a ~440px panel here and inline at ~700px on Today.
+*/
+
+/* ───────── layout ───────── */
+.messages {
+  --panel-w: 440px;
+  --panel-gap: 20px;
+  display: grid;
+  /* 1fr, not minmax(0, 1fr): the browser only interpolates plain tracks, so the panel column can glide open. */
+  grid-template-columns: 1fr 0px;
+  align-items: start;
+  transition: grid-template-columns var(--slow) var(--ease);
+}
+.messages.has-panel { grid-template-columns: 1fr calc(var(--panel-w) + var(--panel-gap) + 10px); }
+@media (max-width: 1100px) {
+  .messages { --panel-w: 380px; --panel-gap: 16px; }
+}
+
+.msg-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; max-width: 840px; }
+
+.msg-title { display: flex; flex-direction: column; gap: 2px; }
+.msg-title h1 { margin: 0; font: 500 28px/1.15 var(--serif); letter-spacing: -0.005em; }
+
+/* ───────── filter toolbar ───────── */
+.msg-toolbar { display: flex; align-items: center; gap: 12px; }
+.msg-toolbar .seg-group { flex: none; }
+/* `.seg > span` (labels) would otherwise win over the pill, which is also a span. */
+.msg-toolbar .seg > .seg-pill { position: absolute; z-index: 0; }
+.msg-busy { color: var(--muted); font-size: 16px; }
+
+/* ───────── rows ───────── */
+.rows { position: relative; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.rows > li { margin: 0; }
+
+.msg-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease), box-shadow var(--med) var(--ease),
+    transform var(--med) var(--ease);
+}
+.msg-row::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  transform: scaleY(0);
+  transition: transform var(--med) var(--ease);
+}
+.msg-row:hover { border-color: var(--line-strong); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.msg-row:active { transform: translateY(0) scale(0.995); box-shadow: var(--shadow-sm); }
+.msg-row.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface));
+  box-shadow: var(--shadow-sm);
+}
+.msg-row.active::before { transform: scaleY(1); }
+
+.row-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink);
+  font: 400 16px / 1.4 var(--serif);
+  overflow-wrap: anywhere;
+}
+.row-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; color: var(--muted); font-size: 12px; }
+.row-when { display: inline-flex; align-items: center; gap: 6px; }
+.row-done { color: var(--good); font-size: 14px; }
+.row-scores { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 12px; }
+
+.msg-more { align-self: center; }
+.msg-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 44px 0 20px; color: var(--muted); text-align: center; }
+.msg-empty i { font-size: 34px; color: var(--line-strong); }
+.msg-empty p { margin: 0; font: 400 17px var(--serif); color: var(--ink-2); }
+
+.msg-skel { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.skel {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--sunken) 35%, var(--line) 50%, var(--sunken) 65%);
+  background-size: 250% 100%;
+  animation: skel-sweep 1.5s linear infinite;
+}
+.skel.w60 { width: 60%; }
+.skel.w35 { width: 35%; height: 10px; }
+@keyframes skel-sweep { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+/* ───────── open-message panel ───────── */
+/* Sticky and scrolled on its own, so a tall card never hides below the fold of the list. */
+.msg-detail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  min-width: 0;
+  max-height: calc(100dvh - var(--bar-h) - var(--status-h) - 44px);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.msg-panel { width: var(--panel-w); margin-left: var(--panel-gap); padding: 2px 2px 10px; }
+.msg-panel-h { display: flex; align-items: center; justify-content: space-between; min-height: var(--ctl); margin-bottom: 4px; }
+
+/* ───────── card ───────── */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  padding: 20px 22px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
+.card-meta { color: var(--muted); font-size: 12.5px; }
+.card-scores { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+
+/* What you wrote: the rule on the left draws itself in. */
+.orig { position: relative; margin: 0; padding: 2px 0 2px 16px; }
+.orig::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  transform-origin: 50% 0;
+  animation: orig-draw 0.7s var(--ease) both;
+}
+@keyframes orig-draw { from { transform: scaleY(0); } }
+.orig figcaption { margin-bottom: 4px; }
+.orig blockquote {
+  margin: 0;
+  color: var(--ink);
+  font: 400 17px/1.5 var(--serif);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.card .eyebrow, .card h3 { font-size: 11.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.card h3 { margin: 0 0 6px; }
+
+/* "Say it your way" comes first; suggestions are only revealed after. */
+.attempt { display: flex; flex-direction: column; gap: 8px; }
+.attempt label { color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+.attempt textarea { min-height: 96px; font: 400 17px/1.5 var(--serif); }
+.attempt textarea::placeholder { color: var(--muted); font-style: italic; }
+.card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+/* Busy: a shimmering stand-in for the coaching that is about to arrive. */
+.coach-wait { overflow: hidden; }
+.coach-wait-in {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface-2);
+}
+.coach-wait-h { display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px; }
+.coach-spark { color: var(--accent); font-size: 18px; animation: coach-spark 1.6s var(--ease) infinite; }
+@keyframes coach-spark {
+  0%, 100% { transform: scale(1) rotate(0); }
+  50% { transform: scale(1.25) rotate(18deg); }
+}
+.dots { display: inline-flex; gap: 3px; margin-left: -4px; }
+.dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); animation: dot-bounce 1.2s ease-in-out infinite; }
+.dots i:nth-child(2) { animation-delay: 0.15s; }
+.dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes dot-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+.card .inline-error { overflow: hidden; }
+
+/* ───────── coaching ───────── */
+.coaching { display: flex; flex-direction: column; gap: 18px; }
+.sect-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 8px; }
+.sect-h h3 { margin: 0; }
+.attempt-text { margin: 0; color: var(--ink); font: 400 17px/1.5 var(--serif); white-space: pre-wrap; overflow-wrap: anywhere; }
+.why p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.6; max-width: 64ch; }
+
+/* The 4px of padding keeps focus rings from being clipped by the height animation. */
+.rw-sec .sect-h { margin-bottom: 0; }
+.rw-wrap { overflow: hidden; margin: 6px -4px -4px; padding: 4px; }
+.rewrites { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.rw {
+  padding: 12px 14px 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--good) 24%, transparent);
+  border-radius: 14px;
+  background: var(--good-soft);
+}
+.rw-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.rw p { margin: 0; color: var(--ink); font: 500 19px/1.4 var(--serif); overflow-wrap: anywhere; }
+.rw-act { display: inline-flex; align-items: center; gap: 4px; }
+.rw-copied { color: var(--good); font-size: 12px; font-weight: 600; }
+
+/* Register: the word is always there; the tone (and icon) only helps tell them apart. */
+.reg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px 0 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.reg i { font-size: 13px; }
+.reg.casual { border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent); }
+.reg.professional { border-color: var(--ink-2); color: var(--ink); }
+
+.copy { position: relative; }
+.copy i { display: inline-block; }
+.copy.done { color: var(--good); }
+
+.remember {
+  display: flex;
+  gap: 11px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.remember .bulb { display: inline-block; flex: none; margin-top: 1px; color: var(--accent); font-size: 21px; transform-origin: 50% 20%; }
+.remember strong { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.remember p { margin: 3px 0 0; color: var(--ink); line-height: 1.55; font-size: 14px; }
+
+/* ───────── footer ───────── */
+.card-f {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.card-f:empty { display: none; }
+.card-f .btn { margin-left: auto; }
+.btn.is-done {
+  border-color: color-mix(in srgb, var(--good) 45%, transparent);
+  background: var(--good-soft);
+  color: var(--good);
+}
+.btn.is-done:disabled { opacity: 1; }
+.btn.is-done:hover { border-color: var(--good); background: var(--good-soft); }
+.btn.is-done i { display: inline-block; }

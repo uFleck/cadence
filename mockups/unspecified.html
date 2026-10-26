@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence mockup - Night Metronome</title>
+<style>
+/* Only the body is unscoped: it centres the wrapper on a neutral background. */
+body { margin: 0; padding: 24px; display: flex; justify-content: center; background: #0b0c11; }
+
+.mk-unspecified {
+  /* Night Metronome palette (dark primary) */
+  --mku-bg: #12141c;
+  --mku-panel: #181b26;
+  --mku-raise: #1f2331;
+  --mku-line: #2a2f42;
+  --mku-text: #ebe8e1;
+  --mku-muted: #9298ad;
+  --mku-amber: #f2b84b;
+  --mku-amber-ink: #1c1405;
+  --mku-amber-soft: rgba(242, 184, 75, .12);
+  --mku-mint: #6fd3a8;
+  --mku-coral: #f58a7a;
+  --mku-sky: #86aef5;
+  --mku-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 0 1px #2a2f42;
+  --mku-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mku-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --mku-mono: "Cascadia Mono", ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
+
+  display: block;
+  width: 1100px;
+  max-width: 100%;
+  font-family: var(--mku-ui);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--mku-text);
+  -webkit-font-smoothing: antialiased;
+}
+.mk-unspecified[data-theme="light"] {
+  --mku-bg: #f4f1ea;
+  --mku-panel: #fbf9f4;
+  --mku-raise: #ffffff;
+  --mku-line: #ddd7c9;
+  --mku-text: #1d1f2a;
+  --mku-muted: #5f6478;
+  --mku-amber: #b4690e;
+  --mku-amber-ink: #fffaf0;
+  --mku-amber-soft: rgba(180, 105, 14, .1);
+  --mku-mint: #1c7a57;
+  --mku-coral: #c2412f;
+  --mku-sky: #2f5fc0;
+  --mku-shadow: 0 30px 80px rgba(20, 20, 40, .25), 0 0 0 1px #ddd7c9;
+}
+.mk-unspecified *, .mk-unspecified *::before, .mk-unspecified *::after { box-sizing: border-box; }
+.mk-unspecified button { font: inherit; color: inherit; cursor: pointer; }
+.mk-unspecified h1, .mk-unspecified h2, .mk-unspecified h3, .mk-unspecified p, .mk-unspecified ul, .mk-unspecified blockquote { margin: 0; padding: 0; }
+.mk-unspecified ul { list-style: none; }
+.mk-unspecified svg { display: block; }
+.mk-unspecified .mku-ico { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.mk-unspecified :focus-visible { outline: 2px solid var(--mku-amber); outline-offset: 2px; }
+.mk-unspecified .mku-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- window frame ---------- */
+.mk-unspecified .mku-win {
+  position: relative;
+  height: 720px;
+  display: grid;
+  grid-template-rows: 38px 1fr 34px;
+  background: var(--mku-bg);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--mku-shadow);
+}
+.mk-unspecified .mku-titlebar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--mku-panel);
+  border-bottom: 1px solid var(--mku-line);
+  padding-left: 14px;
+  user-select: none;
+}
+.mk-unspecified .mku-brand { display: flex; align-items: center; gap: 9px; font-weight: 650; letter-spacing: .02em; font-size: 13px; }
+.mk-unspecified .mku-logo { width: 18px; height: 18px; color: var(--mku-amber); }
+.mk-unspecified .mku-wintitle { color: var(--mku-muted); font-size: 12px; }
+.mk-unspecified .mku-winctl { display: flex; height: 100%; }
+.mk-unspecified .mku-winctl button {
+  width: 46px; height: 100%; border: 0; background: transparent; color: var(--mku-muted);
+  display: grid; place-items: center;
+}
+.mk-unspecified .mku-winctl button:hover { background: var(--mku-raise); color: var(--mku-text); }
+.mk-unspecified .mku-winctl button.mku-close:hover { background: #d0453a; color: #fff; }
+.mk-unspecified .mku-winctl .mku-ico { width: 14px; height: 14px; }
+
+.mk-unspecified .mku-body { display: grid; grid-template-columns: 184px 1fr; min-height: 0; }
+
+/* ---------- navigation ---------- */
+.mk-unspecified .mku-nav {
+  background: var(--mku-panel);
+  border-right: 1px solid var(--mku-line);
+  padding: 16px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.mk-unspecified .mku-nav-label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--mku-muted); padding: 0 10px 8px; }
+.mk-unspecified .mku-tab {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  padding: 9px 10px; border-radius: 8px;
+  border: 1px solid transparent; background: transparent; color: var(--mku-muted);
+  font-weight: 560;
+}
+.mk-unspecified .mku-tab:hover { background: var(--mku-raise); color: var(--mku-text); }
+.mk-unspecified .mku-tab[aria-selected="true"] {
+  background: var(--mku-amber-soft); color: var(--mku-text); border-color: rgba(242, 184, 75, .35);
+  box-shadow: inset 3px 0 0 var(--mku-amber);
+}
+.mk-unspecified .mku-tab[aria-selected="true"] .mku-ico { color: var(--mku-amber); }
+.mk-unspecified .mku-badge {
+  margin-left: auto; font-family: var(--mku-mono); font-size: 11.5px; font-weight: 600;
+  background: var(--mku-amber); color: var(--mku-amber-ink); border-radius: 999px; padding: 0 7px; line-height: 18px;
+}
+.mk-unspecified .mku-nav-foot { margin-top: auto; display: grid; gap: 8px; }
+.mk-unspecified .mku-streak {
+  background: var(--mku-raise); border: 1px solid var(--mku-line); border-radius: 8px; padding: 10px; font-size: 12px; color: var(--mku-muted);
+}
+.mk-unspecified .mku-streak b { display: block; color: var(--mku-text); font-size: 13px; }
+.mk-unspecified .mku-theme { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--mku-line); background: transparent; color: var(--mku-muted); font-size: 12.5px; }
+.mk-unspecified .mku-theme:hover { color: var(--mku-text); background: var(--mku-raise); }
+
+/* ---------- content ---------- */
+.mk-unspecified .mku-main { overflow-y: auto; padding: 22px 26px 26px; min-width: 0; }
+.mk-unspecified .mku-panel[hidden] { display: none; }
+.mk-unspecified .mku-h1 { font-family: var(--mku-serif); font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+.mk-unspecified .mku-sub { color: var(--mku-muted); margin-top: 2px; }
+.mk-unspecified .mku-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.mk-unspecified .mku-h2 { font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--mku-muted); font-weight: 650; margin-bottom: 12px; }
+
+.mk-unspecified .mku-card { background: var(--mku-panel); border: 1px solid var(--mku-line); border-radius: 12px; padding: 16px 18px; }
+
+/* buttons */
+.mk-unspecified .mku-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 8px; padding: 8px 14px; font-weight: 600; font-size: 13px;
+  border: 1px solid var(--mku-line); background: var(--mku-raise); color: var(--mku-text);
+}
+.mk-unspecified .mku-btn:hover { border-color: var(--mku-muted); }
+.mk-unspecified .mku-btn.mku-primary { background: var(--mku-amber); color: var(--mku-amber-ink); border-color: var(--mku-amber); }
+.mk-unspecified .mku-btn.mku-primary:hover { filter: brightness(1.08); }
+.mk-unspecified .mku-btn.mku-ghost { background: transparent; }
+.mk-unspecified .mku-btn.mku-danger { background: transparent; color: var(--mku-coral); border-color: var(--mku-coral); }
+
+/* naturalness meter: four steps + the number, always both */
+.mk-unspecified .mku-meter { display: inline-flex; align-items: center; gap: 8px; }
+.mk-unspecified .mku-bars { display: inline-flex; gap: 3px; align-items: flex-end; height: 16px; }
+.mk-unspecified .mku-bars i { width: 6px; border-radius: 2px; background: var(--mku-line); display: block; }
+.mk-unspecified .mku-bars i:nth-child(1) { height: 6px; }
+.mk-unspecified .mku-bars i:nth-child(2) { height: 9px; }
+.mk-unspecified .mku-bars i:nth-child(3) { height: 12px; }
+.mk-unspecified .mku-bars i:nth-child(4) { height: 16px; }
+.mk-unspecified .mku-meter.low  .mku-bars i.on { background: var(--mku-coral); }
+.mk-unspecified .mku-meter.mid  .mku-bars i.on { background: var(--mku-amber); }
+.mk-unspecified .mku-meter.high .mku-bars i.on { background: var(--mku-mint); }
+.mk-unspecified .mku-num { font-family: var(--mku-mono); font-weight: 650; font-size: 14px; font-variant-numeric: tabular-nums; }
+.mk-unspecified .mku-num small { color: var(--mku-muted); font-weight: 500; font-size: 11px; }
+.mk-unspecified .mku-meter.big .mku-bars { height: 28px; gap: 4px; }
+.mk-unspecified .mku-meter.big .mku-bars i { width: 10px; }
+.mk-unspecified .mku-meter.big .mku-bars i:nth-child(1) { height: 11px; }
+.mk-unspecified .mku-meter.big .mku-bars i:nth-child(2) { height: 17px; }
+.mk-unspecified .mku-meter.big .mku-bars i:nth-child(3) { height: 22px; }
+.mk-unspecified .mku-meter.big .mku-bars i:nth-child(4) { height: 28px; }
+
+.mk-unspecified .mku-chip { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--mku-line); color: var(--mku-muted); background: var(--mku-raise); white-space: nowrap; }
+.mk-unspecified .mku-chip.ok { color: var(--mku-mint); border-color: var(--mku-mint); }
+
+/* ---------- Today ---------- */
+.mk-unspecified .mku-grid3 { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.mk-unspecified .mku-bignum { display: flex; align-items: baseline; gap: 8px; }
+.mk-unspecified .mku-bignum strong { font-family: var(--mku-serif); font-size: 54px; line-height: 1; font-weight: 600; letter-spacing: -.02em; }
+.mk-unspecified .mku-bignum span { color: var(--mku-muted); font-size: 15px; }
+.mk-unspecified .mku-today-meter { display: flex; align-items: center; gap: 14px; margin: 10px 0 6px; }
+.mk-unspecified .mku-delta { font-size: 12.5px; color: var(--mku-muted); }
+.mk-unspecified .mku-delta b { color: var(--mku-mint); }
+.mk-unspecified .mku-spark { width: 100%; height: 76px; margin-top: 8px; }
+.mk-unspecified .mku-spark .ln { fill: none; stroke: var(--mku-amber); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.mk-unspecified .mku-spark .dot { fill: var(--mku-panel); stroke: var(--mku-amber); stroke-width: 2; }
+.mk-unspecified .mku-spark .dot.now { fill: var(--mku-amber); }
+.mk-unspecified .mku-spark .goal { stroke: var(--mku-muted); stroke-dasharray: 3 4; stroke-width: 1; }
+.mk-unspecified .mku-spark text { fill: var(--mku-muted); font-family: var(--mku-mono); font-size: 9.5px; }
+.mk-unspecified .mku-spark text.now { fill: var(--mku-text); font-weight: 700; }
+.mk-unspecified .mku-counts { display: grid; gap: 10px; margin-top: 6px; }
+.mk-unspecified .mku-counts li { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 8px; border-bottom: 1px dashed var(--mku-line); }
+.mk-unspecified .mku-counts li:last-child { border-bottom: 0; }
+.mk-unspecified .mku-counts b { font-family: var(--mku-mono); font-size: 20px; }
+.mk-unspecified .mku-counts span { color: var(--mku-muted); }
+.mk-unspecified .mku-nextrun .mku-time { font-family: var(--mku-serif); font-size: 44px; line-height: 1; font-weight: 600; }
+.mk-unspecified .mku-nextrun .mku-time small { font-size: 14px; color: var(--mku-muted); font-family: var(--mku-ui); font-weight: 500; margin-left: 4px; }
+.mk-unspecified .mku-nextrun p { color: var(--mku-muted); margin: 8px 0 14px; font-size: 13px; }
+.mk-unspecified .mku-track { height: 6px; border-radius: 3px; background: var(--mku-line); overflow: hidden; margin: 10px 0 4px; }
+.mk-unspecified .mku-track i { display: block; height: 100%; width: 86%; background: var(--mku-amber); }
+.mk-unspecified .mku-track-lbl { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--mku-muted); font-family: var(--mku-mono); }
+
+.mk-unspecified .mku-qhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mk-unspecified .mku-qhead .mku-h2 { margin: 0; }
+.mk-unspecified .mku-link { background: transparent; border: 0; color: var(--mku-amber); font-weight: 600; font-size: 13px; padding: 4px 0; display: inline-flex; gap: 6px; align-items: center; }
+.mk-unspecified .mku-link:hover { text-decoration: underline; }
+.mk-unspecified .mku-queue { display: grid; gap: 8px; }
+.mk-unspecified .mku-qrow {
+  width: 100%; text-align: left;
+  display: grid; grid-template-columns: 28px 1fr auto 150px 18px; gap: 14px; align-items: center;
+  padding: 11px 14px; border-radius: 10px; border: 1px solid var(--mku-line); background: var(--mku-panel);
+}
+.mk-unspecified .mku-qrow:hover { border-color: var(--mku-amber); background: var(--mku-raise); }
+.mk-unspecified .mku-rank { font-family: var(--mku-mono); color: var(--mku-muted); font-size: 12px; }
+.mk-unspecified .mku-qtext { font-family: var(--mku-serif); font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-unspecified .mku-qtext small { display: block; font-family: var(--mku-ui); font-size: 11.5px; color: var(--mku-muted); margin-top: 1px; }
+.mk-unspecified .mku-qrow .mku-ico:last-child { color: var(--mku-muted); }
+
+/* ---------- Messages ---------- */
+.mk-unspecified .mku-seg { display: inline-flex; background: var(--mku-panel); border: 1px solid var(--mku-line); border-radius: 9px; padding: 3px; }
+.mk-unspecified .mku-seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 6px; color: var(--mku-muted); font-weight: 600; font-size: 13px; }
+.mk-unspecified .mku-seg button[aria-pressed="true"] { background: var(--mku-raise); color: var(--mku-text); box-shadow: 0 0 0 1px var(--mku-line); }
+.mk-unspecified .mku-seg b { font-family: var(--mku-mono); font-weight: 600; margin-left: 5px; color: var(--mku-amber); }
+
+.mk-unspecified .mku-msgs { display: grid; gap: 10px; }
+.mk-unspecified .mku-open {
+  background: var(--mku-panel); border: 1px solid rgba(242, 184, 75, .45); border-radius: 14px;
+  overflow: hidden; box-shadow: 0 0 0 4px var(--mku-amber-soft);
+}
+.mk-unspecified .mku-open-h { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--mku-line); background: var(--mku-raise); }
+.mk-unspecified .mku-meta { color: var(--mku-muted); font-size: 12.5px; display: flex; gap: 8px; align-items: center; }
+.mk-unspecified .mku-scores { display: flex; gap: 12px; align-items: center; }
+
+.mk-unspecified .mku-hero { padding: 22px 24px 18px; }
+.mk-unspecified .mku-hero-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mk-unspecified .mku-eyebrow { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--mku-amber); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.mk-unspecified .mku-reg { display: inline-flex; background: var(--mku-bg); border: 1px solid var(--mku-line); border-radius: 999px; padding: 2px; }
+.mk-unspecified .mku-reg button { border: 0; background: transparent; padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--mku-muted); text-transform: capitalize; }
+.mk-unspecified .mku-reg button[aria-pressed="true"] { background: var(--mku-amber); color: var(--mku-amber-ink); }
+.mk-unspecified .mku-rewrite { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.mk-unspecified .mku-rewrite p { font-family: var(--mku-serif); font-size: 29px; line-height: 1.28; font-weight: 500; letter-spacing: -.01em; }
+.mk-unspecified .mku-rewrite ins { white-space: nowrap; text-decoration: none; background: var(--mku-amber-soft); border-bottom: 2px solid var(--mku-amber); border-radius: 2px; padding: 0 2px; }
+.mk-unspecified .mku-copy { flex: none; margin-top: 4px; }
+.mk-unspecified .mku-why { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-top: 18px; }
+.mk-unspecified .mku-why > div { border-radius: 10px; padding: 12px 14px; border: 1px solid var(--mku-line); background: var(--mku-bg); font-size: 13.5px; }
+.mk-unspecified .mku-why h3 { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--mku-muted); margin-bottom: 4px; }
+.mk-unspecified .mku-why .mku-tip { border-color: rgba(242, 184, 75, .4); background: var(--mku-amber-soft); }
+.mk-unspecified .mku-why .mku-tip h3 { color: var(--mku-amber); }
+
+.mk-unspecified .mku-secondary { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--mku-line); }
+.mk-unspecified .mku-secondary section { padding: 14px 24px 16px; }
+.mk-unspecified .mku-secondary section + section { border-left: 1px solid var(--mku-line); }
+.mk-unspecified .mku-secondary h3 { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--mku-muted); margin-bottom: 6px; font-weight: 650; }
+.mk-unspecified .mku-orig { font-size: 15px; color: var(--mku-muted); }
+.mk-unspecified .mku-orig u { text-decoration: underline wavy var(--mku-coral); text-underline-offset: 4px; color: var(--mku-text); }
+.mk-unspecified .mku-attempt-text { font-size: 15px; color: var(--mku-muted); }
+.mk-unspecified .mku-attempt-note { font-size: 12px; margin-top: 6px; color: var(--mku-muted); display: flex; align-items: center; gap: 6px; }
+.mk-unspecified .mku-open-f { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; border-top: 1px solid var(--mku-line); background: var(--mku-raise); }
+.mk-unspecified .mku-open-f .mku-meta { font-size: 12px; }
+.mk-unspecified .mku-open-f .mku-actions { display: flex; gap: 8px; }
+
+.mk-unspecified .mku-row {
+  display: grid; grid-template-columns: 1fr auto 150px 18px; gap: 14px; align-items: center;
+  padding: 11px 16px; border-radius: 10px; border: 1px solid var(--mku-line); background: var(--mku-panel);
+}
+.mk-unspecified .mku-row .mku-qtext { font-size: 15px; }
+.mk-unspecified .mku-row .mku-ico:last-child { color: var(--mku-muted); }
+
+/* ---------- Patterns ---------- */
+.mk-unspecified .mku-pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.mk-unspecified .mku-bar { display: grid; grid-template-columns: 168px 1fr 110px; gap: 12px; align-items: center; padding: 7px 0; }
+.mk-unspecified .mku-bar .mku-lbl { font-size: 13px; }
+.mk-unspecified .mku-bar .mku-rail { height: 12px; border-radius: 3px; background: var(--mku-bg); border: 1px solid var(--mku-line); overflow: hidden; display: flex; align-items: center; }
+.mk-unspecified .mku-bar .mku-rail i { display: block; height: 100%; background: var(--mku-amber); border-radius: 2px; }
+.mk-unspecified .mku-bar.top .mku-rail i { background: var(--mku-coral); }
+.mk-unspecified .mku-bar .mku-val { font-family: var(--mku-mono); font-size: 12px; color: var(--mku-muted); text-align: right; }
+.mk-unspecified .mku-bar .mku-val b { color: var(--mku-text); font-size: 13px; }
+.mk-unspecified .mku-note { font-size: 12px; color: var(--mku-muted); margin-top: 10px; }
+.mk-unspecified .mku-trend { width: 100%; height: 190px; }
+.mk-unspecified .mku-trend .grid { stroke: var(--mku-line); stroke-width: 1; }
+.mk-unspecified .mku-trend .goal { stroke: var(--mku-mint); stroke-dasharray: 5 4; stroke-width: 1.4; }
+.mk-unspecified .mku-trend .ln { fill: none; stroke: var(--mku-amber); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.mk-unspecified .mku-trend .area { fill: var(--mku-amber-soft); }
+.mk-unspecified .mku-trend .dot { fill: var(--mku-panel); stroke: var(--mku-amber); stroke-width: 2; }
+.mk-unspecified .mku-trend text { fill: var(--mku-muted); font-family: var(--mku-mono); font-size: 10.5px; }
+.mk-unspecified .mku-trend text.pt { fill: var(--mku-text); font-weight: 700; }
+.mk-unspecified .mku-trend text.goaltxt { fill: var(--mku-mint); font-weight: 600; }
+.mk-unspecified .mku-impact li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 0; border-bottom: 1px dashed var(--mku-line); }
+.mk-unspecified .mku-impact li:last-child { border-bottom: 0; }
+.mk-unspecified .mku-impact .mku-ba { grid-column: 1 / -1; font-size: 12px; font-family: var(--mku-mono); font-size: 12.5px; color: var(--mku-muted); }
+.mk-unspecified .mku-impact .mku-ba b { color: var(--mku-text); font-size: 14px; }
+.mk-unspecified .mku-verdict { font-size: 12px; font-weight: 650; border-radius: 999px; padding: 2px 10px; border: 1px solid; align-self: center; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.mk-unspecified .mku-verdict.good { color: var(--mku-mint); border-color: var(--mku-mint); }
+.mk-unspecified .mku-verdict.flat { color: var(--mku-muted); border-color: var(--mku-line); }
+.mk-unspecified .mku-verdict .mku-ico { width: 12px; height: 12px; }
+.mk-unspecified .mku-rules li { padding: 9px 0; border-bottom: 1px dashed var(--mku-line); font-size: 13.5px; }
+.mk-unspecified .mku-rules li:last-child { border-bottom: 0; }
+.mk-unspecified .mku-rules em { font-family: var(--mku-serif); font-style: normal; font-size: 15.5px; color: var(--mku-amber); }
+.mk-unspecified .mku-rules .mku-from { color: var(--mku-muted); font-size: 12px; display: block; }
+
+/* ---------- status bar ---------- */
+.mk-unspecified .mku-status {
+  display: flex; align-items: center; gap: 16px; padding: 0 14px;
+  background: var(--mku-panel); border-top: 1px solid var(--mku-line);
+  font-size: 12px; color: var(--mku-muted);
+}
+.mk-unspecified .mku-status b { color: var(--mku-text); font-family: var(--mku-mono); }
+.mk-unspecified .mku-status .mku-sep { width: 1px; height: 14px; background: var(--mku-line); }
+.mk-unspecified .mku-status .mku-ok { color: var(--mku-mint); display: inline-flex; align-items: center; gap: 5px; }
+.mk-unspecified .mku-status .mku-next { margin-left: auto; }
+.mk-unspecified .mku-status .mku-btn { padding: 3px 10px; font-size: 12px; border-radius: 6px; }
+
+/* ---------- in-app dialog (never a native one) ---------- */
+.mk-unspecified .mku-scrim {
+  position: absolute; inset: 0; z-index: 20;
+  background: rgba(6, 7, 12, .62); backdrop-filter: blur(2px);
+  display: grid; place-items: center;
+}
+.mk-unspecified .mku-scrim[hidden] { display: none; }
+.mk-unspecified .mku-dialog {
+  width: 440px; max-width: calc(100% - 40px);
+  background: var(--mku-panel); border: 1px solid var(--mku-line); border-radius: 14px;
+  padding: 22px 24px 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+}
+.mk-unspecified .mku-dialog-ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--mku-amber-soft); color: var(--mku-amber); margin-bottom: 12px; }
+.mk-unspecified .mku-dialog-ico .mku-ico { width: 20px; height: 20px; }
+.mk-unspecified .mku-dialog h2 { font-family: var(--mku-serif); font-size: 21px; font-weight: 600; margin-bottom: 6px; }
+.mk-unspecified .mku-dialog p { color: var(--mku-muted); }
+.mk-unspecified .mku-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.mk-unspecified .mku-toast {
+  position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); z-index: 30;
+  background: var(--mku-raise); border: 1px solid var(--mku-mint); color: var(--mku-text);
+  border-radius: 10px; padding: 9px 14px; font-size: 13px; display: flex; gap: 8px; align-items: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
+}
+.mk-unspecified .mku-toast[hidden] { display: none; }
+.mk-unspecified .mku-toast .mku-ico { color: var(--mku-mint); }
+</style>
+</head>
+<body>
+<div class="mk-unspecified" data-theme="dark">
+
+  <!-- icon sprite (ids prefixed so four merged mockups never collide) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <symbol id="mku-i-logo" viewBox="0 0 24 24"><path d="M8 21 10.5 4h3L16 21Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 17 16.5 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="15.4" cy="10" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="mku-i-today" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="mku-i-msg" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4Z"/><path d="M8 9.5h8M8 12.5h5"/></symbol>
+    <symbol id="mku-i-pat" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 4-5 3 3 5-7"/></symbol>
+    <symbol id="mku-i-min" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="mku-i-max" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1.5"/></symbol>
+    <symbol id="mku-i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="mku-i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/></symbol>
+    <symbol id="mku-i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="mku-i-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7Z"/></symbol>
+    <symbol id="mku-i-caret" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="mku-i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="mku-i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+    <symbol id="mku-i-flat" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="mku-i-spark" viewBox="0 0 24 24"><path d="M12 3v5M12 16v5M3 12h5M16 12h5M6 6l3 3M15 15l3 3M18 6l-3 3M9 15l-3 3"/></symbol>
+    <symbol id="mku-i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+    <symbol id="mku-i-redo" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v4.5h4.5"/></symbol>
+    <symbol id="mku-i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></symbol>
+  </svg>
+
+  <div class="mku-win" role="application" aria-label="Cadence">
+
+    <!-- title bar -->
+    <header class="mku-titlebar">
+      <div class="mku-brand">
+        <svg class="mku-ico mku-logo" aria-hidden="true"><use href="#mku-i-logo"/></svg>
+        <span>Cadence</span>
+        <span class="mku-wintitle" data-title>/ Today</span>
+      </div>
+      <div class="mku-winctl">
+        <button type="button" aria-label="Minimize"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-min"/></svg></button>
+        <button type="button" aria-label="Maximize"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-max"/></svg></button>
+        <button type="button" class="mku-close" aria-label="Close to tray"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-x"/></svg></button>
+      </div>
+    </header>
+
+    <div class="mku-body">
+
+      <!-- navigation -->
+      <nav class="mku-nav" aria-label="Views">
+        <div class="mku-nav-label">Practice</div>
+        <div role="tablist" aria-orientation="vertical" style="display:grid;gap:4px">
+          <button type="button" class="mku-tab" role="tab" id="mku-t-today" aria-controls="mku-p-today" aria-selected="true" data-tab="today">
+            <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-today"/></svg>Today<span class="mku-badge">8</span>
+          </button>
+          <button type="button" class="mku-tab" role="tab" id="mku-t-messages" aria-controls="mku-p-messages" aria-selected="false" tabindex="-1" data-tab="messages">
+            <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-msg"/></svg>Messages
+          </button>
+          <button type="button" class="mku-tab" role="tab" id="mku-t-patterns" aria-controls="mku-p-patterns" aria-selected="false" tabindex="-1" data-tab="patterns">
+            <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-pat"/></svg>Patterns
+          </button>
+        </div>
+        <div class="mku-nav-foot">
+          <div class="mku-streak"><b>4 days in a row</b>You reviewed at least one message.</div>
+          <button type="button" class="mku-theme" data-theme-toggle><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-moon"/></svg><span>Switch to light</span></button>
+        </div>
+      </nav>
+
+      <main class="mku-main">
+
+        <!-- ===== TODAY ===== -->
+        <section class="mku-panel" id="mku-p-today" role="tabpanel" aria-labelledby="mku-t-today" data-panel="today">
+          <div class="mku-head">
+            <div>
+              <h1 class="mku-h1">Good evening, Alex</h1>
+              <p class="mku-sub">Thursday. Here is how your English read in Claude Code today.</p>
+            </div>
+          </div>
+
+          <div class="mku-grid3">
+            <div class="mku-card">
+              <h2 class="mku-h2">Naturalness today</h2>
+              <div class="mku-bignum"><strong>1.7</strong><span>out of 3</span></div>
+              <div class="mku-today-meter">
+                <span class="mku-meter mid big" role="img" aria-label="Naturalness 1.7 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="mku-num">1.7</span></span>
+                <span class="mku-delta"><b>+0.2</b> vs yesterday. Goal is 2.0.</span>
+              </div>
+              <svg class="mku-spark" viewBox="0 0 260 76" role="img" aria-label="Average naturalness over the last seven days: 1.4, 1.5, 1.3, 1.8, 1.6, 1.5, 1.7. Goal line at 2.0.">
+                <line class="goal" x1="8" x2="252" y1="26" y2="26"/>
+                <text x="252" y="22" text-anchor="end">goal 2.0</text>
+                <polyline class="ln" points="12,36.8 52,35 92,38.6 132,29.6 172,33.2 212,35 248,31.4"/>
+                <circle class="dot" cx="12" cy="36.8" r="3"/><circle class="dot" cx="52" cy="35" r="3"/><circle class="dot" cx="92" cy="38.6" r="3"/>
+                <circle class="dot" cx="132" cy="29.6" r="3"/><circle class="dot" cx="172" cy="33.2" r="3"/><circle class="dot" cx="212" cy="35" r="3"/>
+                <circle class="dot now" cx="248" cy="31.4" r="4"/>
+                <text x="12" y="56" text-anchor="middle">1.4</text><text x="52" y="56" text-anchor="middle">1.5</text><text x="92" y="56" text-anchor="middle">1.3</text>
+                <text x="132" y="56" text-anchor="middle">1.8</text><text x="172" y="56" text-anchor="middle">1.6</text><text x="212" y="56" text-anchor="middle">1.5</text>
+                <text class="now" x="246" y="56" text-anchor="middle">1.7</text>
+                <text x="12" y="71" text-anchor="middle">Fri</text><text x="52" y="71" text-anchor="middle">Sat</text><text x="92" y="71" text-anchor="middle">Sun</text>
+                <text x="132" y="71" text-anchor="middle">Mon</text><text x="172" y="71" text-anchor="middle">Tue</text><text x="212" y="71" text-anchor="middle">Wed</text>
+                <text class="now" x="246" y="71" text-anchor="middle">Thu</text>
+              </svg>
+            </div>
+
+            <div class="mku-card">
+              <h2 class="mku-h2">Queue</h2>
+              <ul class="mku-counts">
+                <li><span>Waiting to practise</span><b>8</b></li>
+                <li><span>Reviewed</span><b>1</b></li>
+                <li><span>Not screened yet</span><b>2</b></li>
+                <li><span>Sounded native</span><b>2</b></li>
+              </ul>
+              <p class="mku-note">Messages under 2.0 with at least 4 words land in the queue, worst first.</p>
+            </div>
+
+            <div class="mku-card mku-nextrun">
+              <h2 class="mku-h2">Next run</h2>
+              <div class="mku-time">22:00<small>tonight</small></div>
+              <div class="mku-track" aria-hidden="true"><i></i></div>
+              <div class="mku-track-lbl"><span>last run 20 h ago</span><span>in 3 h 12 min</span></div>
+              <p>Cadence reads new prompts, screens them and coaches the 3 worst ahead of time.</p>
+              <button type="button" class="mku-btn mku-primary" data-dialog="run"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-play"/></svg>Run now</button>
+            </div>
+          </div>
+
+          <div class="mku-qhead">
+            <h2 class="mku-h2">Worst messages first</h2>
+            <button type="button" class="mku-link" data-goto="messages">Open all 8 in Messages <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-arrow"/></svg></button>
+          </div>
+          <ul class="mku-queue">
+            <li><button type="button" class="mku-qrow" data-goto="messages">
+              <span class="mku-rank">01</span>
+              <span class="mku-qtext">Please to check the deploy when you have time.<small>web-app · 5 hours ago · rewrite ready</small></span>
+              <span class="mku-chip">Grammar</span>
+              <span class="mku-meter low" role="img" aria-label="Naturalness 0.8 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></span><span class="mku-num">0.8<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </button></li>
+            <li><button type="button" class="mku-qrow" data-goto="messages">
+              <span class="mku-rank">02</span>
+              <span class="mku-qtext">I am remembering you that the release is on Friday.<small>web-app · yesterday</small></span>
+              <span class="mku-chip">Portuguese-style phrasing</span>
+              <span class="mku-meter low" role="img" aria-label="Naturalness 1.1 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="mku-num">1.1<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </button></li>
+            <li><button type="button" class="mku-qrow" data-goto="messages">
+              <span class="mku-rank">03</span>
+              <span class="mku-qtext">I will send you the report until the end of the day.<small>billing-api · 2 hours ago</small></span>
+              <span class="mku-chip">Preposition or word pairing</span>
+              <span class="mku-meter low" role="img" aria-label="Naturalness 1.2 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="mku-num">1.2<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </button></li>
+            <li><button type="button" class="mku-qrow" data-goto="messages">
+              <span class="mku-rank">04</span>
+              <span class="mku-qtext">The thing is that the tests they are failing again in the CI.<small>billing-api · yesterday</small></span>
+              <span class="mku-chip">Word order</span>
+              <span class="mku-meter low" role="img" aria-label="Naturalness 1.3 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="mku-num">1.3<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </button></li>
+          </ul>
+        </section>
+
+        <!-- ===== MESSAGES ===== -->
+        <section class="mku-panel" id="mku-p-messages" role="tabpanel" aria-labelledby="mku-t-messages" data-panel="messages" hidden>
+          <div class="mku-head">
+            <div>
+              <h1 class="mku-h1">Messages</h1>
+              <p class="mku-sub">Open a message to see the rewrite first, then what changed.</p>
+            </div>
+            <div class="mku-seg" role="group" aria-label="Filter">
+              <button type="button" aria-pressed="true">Queue<b>8</b></button>
+              <button type="button" aria-pressed="false">Reviewed<b>1</b></button>
+              <button type="button" aria-pressed="false">All<b>12</b></button>
+            </div>
+          </div>
+
+          <div class="mku-msgs">
+            <article class="mku-open" aria-label="Expanded message">
+              <header class="mku-open-h">
+                <span class="mku-meta">web-app · sent 5 hours ago · 9 words</span>
+                <span class="mku-scores">
+                  <span class="mku-chip">Grammar</span>
+                  <span class="mku-meter low" role="img" aria-label="Naturalness 0.8 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></span><span class="mku-num">0.8<small>/3 natural</small></span></span>
+                </span>
+              </header>
+
+              <div class="mku-hero">
+                <div class="mku-hero-top">
+                  <span class="mku-eyebrow"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-spark"/></svg>Say it like this</span>
+                  <span class="mku-reg" role="group" aria-label="Register">
+                    <button type="button" aria-pressed="true" data-reg="casual">casual</button>
+                    <button type="button" aria-pressed="false" data-reg="professional">professional</button>
+                  </span>
+                </div>
+                <div class="mku-rewrite">
+                  <p data-rewrite aria-live="polite">Could you check the deploy when you have <ins>a moment</ins>?</p>
+                  <button type="button" class="mku-btn mku-copy" data-copy><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-copy"/></svg><span>Copy</span></button>
+                </div>
+                <div class="mku-why">
+                  <div><h3>What was off</h3>'Please' goes straight before the verb, without 'to'. 'Could you' also sounds smoother in a chat.</div>
+                  <div class="mku-tip"><h3>Remember</h3>Use 'please + verb' or 'could you + verb', with no 'to' in between.</div>
+                </div>
+              </div>
+
+              <div class="mku-secondary">
+                <section>
+                  <h3>You wrote</h3>
+                  <p class="mku-orig">Please <u>to</u> check the deploy when you have time.</p>
+                </section>
+                <section>
+                  <h3>Your attempt</h3>
+                  <p class="mku-attempt-text">Please check the deploy when you get a moment.</p>
+                  <p class="mku-attempt-note"><svg class="mku-ico" aria-hidden="true" style="width:13px;height:13px"><use href="#mku-i-check"/></svg>Close. 'When you get a moment' is the natural pairing.</p>
+                </section>
+              </div>
+
+              <footer class="mku-open-f">
+                <span class="mku-meta">Coached by claude -p · 1 attempt saved</span>
+                <span class="mku-actions">
+                  <button type="button" class="mku-btn mku-ghost"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-redo"/></svg>Try again</button>
+                  <button type="button" class="mku-btn mku-primary" data-dialog="review"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-check"/></svg>Mark as reviewed</button>
+                </span>
+              </footer>
+            </article>
+
+            <div class="mku-row">
+              <span class="mku-qtext">I am remembering you that the release is on Friday.</span>
+              <span class="mku-chip">Portuguese-style phrasing</span>
+              <span class="mku-meter low" role="img" aria-label="Naturalness 1.1 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="mku-num">1.1<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </div>
+            <div class="mku-row">
+              <span class="mku-qtext">I will send you the report until the end of the day.</span>
+              <span class="mku-chip">Preposition or word pairing</span>
+              <span class="mku-meter low" role="img" aria-label="Naturalness 1.2 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="mku-num">1.2<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </div>
+            <div class="mku-row">
+              <span class="mku-qtext">The thing is that the tests they are failing again in the CI.</span>
+              <span class="mku-chip">Word order</span>
+              <span class="mku-meter low" role="img" aria-label="Naturalness 1.3 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="mku-num">1.3<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </div>
+            <div class="mku-row">
+              <span class="mku-qtext">I am agree with the proposal, let's go ahead.</span>
+              <span class="mku-chip">Grammar</span>
+              <span class="mku-meter low" role="img" aria-label="Naturalness 1.4 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="mku-num">1.4<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </div>
+            <div class="mku-row">
+              <span class="mku-qtext">Yesterday I have made the migration and it worked well.</span>
+              <span class="mku-chip">Grammar</span>
+              <span class="mku-meter mid" role="img" aria-label="Naturalness 1.6 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="mku-num">1.6<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </div>
+            <div class="mku-row">
+              <span class="mku-qtext">Let me know if you need anything else from my side.</span>
+              <span class="mku-chip ok">Sounds native</span>
+              <span class="mku-meter high" role="img" aria-label="Naturalness 2.9 of 3"><span class="mku-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="mku-num">2.9<small>/3</small></span></span>
+              <svg class="mku-ico" aria-hidden="true"><use href="#mku-i-caret"/></svg>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PATTERNS ===== -->
+        <section class="mku-panel" id="mku-p-patterns" role="tabpanel" aria-labelledby="mku-t-patterns" data-panel="patterns" hidden>
+          <div class="mku-head">
+            <div>
+              <h1 class="mku-h1">Patterns</h1>
+              <p class="mku-sub">The mistakes that keep coming back, and whether coaching helps. Last 12 weeks, 62 flagged of 214 screened.</p>
+            </div>
+          </div>
+
+          <div class="mku-pgrid">
+            <div style="display:grid;gap:14px">
+              <div class="mku-card">
+                <h2 class="mku-h2">Where you lose naturalness</h2>
+                <div class="mku-bar top"><span class="mku-lbl">Grammar</span><span class="mku-rail"><i style="width:100%"></i></span><span class="mku-val"><b>23</b> · avg 1.2</span></div>
+                <div class="mku-bar"><span class="mku-lbl">Word choice</span><span class="mku-rail"><i style="width:61%"></i></span><span class="mku-val"><b>14</b> · avg 1.7</span></div>
+                <div class="mku-bar"><span class="mku-lbl">Preposition or word pairing</span><span class="mku-rail"><i style="width:39%"></i></span><span class="mku-val"><b>9</b> · avg 1.3</span></div>
+                <div class="mku-bar"><span class="mku-lbl">Portuguese-style phrasing</span><span class="mku-rail"><i style="width:30%"></i></span><span class="mku-val"><b>7</b> · avg 1.1</span></div>
+                <div class="mku-bar"><span class="mku-lbl">Tone for a work chat</span><span class="mku-rail"><i style="width:22%"></i></span><span class="mku-val"><b>5</b> · avg 1.8</span></div>
+                <div class="mku-bar"><span class="mku-lbl">Word order</span><span class="mku-rail"><i style="width:17%"></i></span><span class="mku-val"><b>4</b> · avg 1.3</span></div>
+                <p class="mku-note">Count of flagged messages and the average naturalness (0 to 3) for each.</p>
+              </div>
+
+              <div class="mku-card">
+                <h2 class="mku-h2">Your coached issues</h2>
+                <ul class="mku-impact">
+                  <li>
+                    <span><b>Grammar</b></span>
+                    <span class="mku-verdict good"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-down"/></svg>Less often</span>
+                    <span class="mku-ba">Before <b>34%</b> 14 of 41 &nbsp;→&nbsp; After <b>22%</b> 9 of 40</span><span></span>
+                  </li>
+                  <li>
+                    <span><b>Preposition or word pairing</b></span>
+                    <span class="mku-verdict good"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-down"/></svg>Less often</span>
+                    <span class="mku-ba">Before <b>18%</b> 7 of 39 &nbsp;→&nbsp; After <b>11%</b> 4 of 37</span><span></span>
+                  </li>
+                  <li>
+                    <span><b>Word choice</b></span>
+                    <span class="mku-verdict flat"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-flat"/></svg>No change</span>
+                    <span class="mku-ba">Before <b>15%</b> 6 of 41 &nbsp;→&nbsp; After <b>15%</b> 6 of 40</span><span></span>
+                  </li>
+                </ul>
+                <p class="mku-note">Flag rate before and after you first coached each issue. A comparison, not proof of cause.</p>
+              </div>
+            </div>
+
+            <div style="display:grid;gap:14px">
+              <div class="mku-card">
+                <h2 class="mku-h2">Naturalness over time</h2>
+                <svg class="mku-trend" viewBox="0 0 440 190" role="img" aria-label="Daily average naturalness over twelve days, rising from 1.2 to 1.7. Goal line at 2.0.">
+                  <line class="grid" x1="34" x2="430" y1="150" y2="150"/><line class="grid" x1="34" x2="430" y1="110" y2="110"/><line class="grid" x1="34" x2="430" y1="70" y2="70"/><line class="grid" x1="34" x2="430" y1="30" y2="30"/>
+                  <text x="26" y="154" text-anchor="end">0</text><text x="26" y="114" text-anchor="end">1</text><text x="26" y="74" text-anchor="end">2</text><text x="26" y="34" text-anchor="end">3</text>
+                  <line class="goal" x1="34" x2="430" y1="70" y2="70"/>
+                  <text class="goaltxt" x="430" y="64" text-anchor="end">goal 2.0</text>
+                  <polygon class="area" points="50,102 82,94 114,98 146,90 178,94 210,82 242,86 274,90 306,78 338,82 370,74 402,82 402,150 50,150"/>
+                  <polyline class="ln" points="50,102 82,94 114,98 146,90 178,94 210,82 242,86 274,90 306,78 338,82 370,74 402,82"/>
+                  <circle class="dot" cx="50" cy="102" r="3.5"/><circle class="dot" cx="146" cy="90" r="3.5"/><circle class="dot" cx="210" cy="82" r="3.5"/><circle class="dot" cx="306" cy="78" r="3.5"/><circle class="dot" cx="370" cy="74" r="3.5"/><circle class="dot" cx="402" cy="82" r="3.5"/>
+                  <text class="pt" x="50" y="124" text-anchor="middle">1.2</text>
+                  <text class="pt" x="146" y="112" text-anchor="middle">1.5</text>
+                  <text class="pt" x="210" y="104" text-anchor="middle">1.7</text>
+                  <text class="pt" x="306" y="100" text-anchor="middle">1.8</text>
+                  <text class="pt" x="370" y="96" text-anchor="middle">1.9</text>
+                  <text class="pt" x="402" y="104" text-anchor="middle">1.7</text>
+                  <text x="50" y="176" text-anchor="middle">Oct 11</text><text x="210" y="176" text-anchor="middle">Oct 16</text><text x="402" y="176" text-anchor="middle">Oct 22</text>
+                </svg>
+                <p class="mku-note">Average per day. Up 0.5 in twelve days, still 0.3 under the goal.</p>
+              </div>
+
+              <div class="mku-card">
+                <h2 class="mku-h2">Rules worth keeping</h2>
+                <ul class="mku-rules">
+                  <li><em>Say 'I agree', not 'I am agree'.</em><span class="mku-from">Grammar · seen 6 times</span></li>
+                  <li><em>Deadlines take 'by': by Friday, by noon.</em><span class="mku-from">Preposition or word pairing · seen 5 times</span></li>
+                  <li><em>Say 'remind you that', not 'remember you that'.</em><span class="mku-from">Portuguese-style phrasing · seen 4 times</span></li>
+                  <li><em>'Take a look' is a glance, 'review' is a real check.</em><span class="mku-from">Word choice · seen 3 times</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- status bar -->
+    <footer class="mku-status" aria-live="polite">
+      <span><b>8</b> queued</span>
+      <span><b>1</b> reviewed</span>
+      <span><b>2</b> pending</span>
+      <span class="mku-sep" aria-hidden="true"></span>
+      <span class="mku-ok"><svg class="mku-ico" aria-hidden="true" style="width:14px;height:14px"><use href="#mku-i-check"/></svg>Last run ok, 20 hours ago</span>
+      <span class="mku-next"><svg class="mku-ico" aria-hidden="true" style="width:13px;height:13px;display:inline;vertical-align:-2px;margin-right:4px"><use href="#mku-i-clock"/></svg>Next run Thu 22:00</span>
+      <button type="button" class="mku-btn mku-ghost" data-dialog="run"><svg class="mku-ico" aria-hidden="true" style="width:12px;height:12px"><use href="#mku-i-play"/></svg>Run now</button>
+    </footer>
+
+    <!-- in-app confirmation dialog -->
+    <div class="mku-scrim" data-scrim hidden>
+      <div class="mku-dialog" role="dialog" aria-modal="true" aria-labelledby="mku-dlg-title" aria-describedby="mku-dlg-body">
+        <div class="mku-dialog-ico"><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-play"/></svg></div>
+        <h2 id="mku-dlg-title" data-dlg-title>Run Cadence now?</h2>
+        <p id="mku-dlg-body" data-dlg-body>It will read new prompts, screen them with TypeSafe and coach the 3 worst. This takes about a minute.</p>
+        <div class="mku-dialog-actions">
+          <button type="button" class="mku-btn mku-ghost" data-dlg-cancel>Cancel</button>
+          <button type="button" class="mku-btn mku-primary" data-dlg-ok>Run now</button>
+        </div>
+      </div>
+    </div>
+    <div class="mku-toast" data-toast hidden><svg class="mku-ico" aria-hidden="true"><use href="#mku-i-check"/></svg><span data-toast-text></span></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var root = document.querySelector('.mk-unspecified');
+  if (!root) return;
+  var $ = function (s, c) { return (c || root).querySelector(s); };
+  var $$ = function (s, c) { return Array.prototype.slice.call((c || root).querySelectorAll(s)); };
+
+  /* tabs */
+  var tabs = $$('[data-tab]');
+  var titles = { today: 'Today', messages: 'Messages', patterns: 'Patterns' };
+  function show(name, focus) {
+    tabs.forEach(function (t) {
+      var on = t.getAttribute('data-tab') === name;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+      if (on && focus) t.focus();
+    });
+    $$('[data-panel]').forEach(function (p) { p.hidden = p.getAttribute('data-panel') !== name; });
+    $('[data-title]').textContent = '/ ' + titles[name];
+    $('.mku-main').scrollTop = 0;
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { show(t.getAttribute('data-tab')); });
+    t.addEventListener('keydown', function (e) {
+      var d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+      if (!d) return;
+      e.preventDefault();
+      show(tabs[(i + d + tabs.length) % tabs.length].getAttribute('data-tab'), true);
+    });
+  });
+  $$('[data-goto]').forEach(function (b) {
+    b.addEventListener('click', function () { show(b.getAttribute('data-goto')); });
+  });
+
+  /* theme */
+  var themeBtn = $('[data-theme-toggle]');
+  themeBtn.addEventListener('click', function () {
+    var light = root.getAttribute('data-theme') !== 'light';
+    root.setAttribute('data-theme', light ? 'light' : 'dark');
+    $('span', themeBtn).textContent = light ? 'Switch to dark' : 'Switch to light';
+  });
+
+  /* register toggle on the rewrite hero */
+  var rewrites = {
+    casual: 'Could you check the deploy when you have <ins>a moment</ins>?',
+    professional: 'Could you check the deploy when you have <ins>time</ins>?'
+  };
+  $$('[data-reg]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      $$('[data-reg]').forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+      $('[data-rewrite]').innerHTML = rewrites[b.getAttribute('data-reg')];
+    });
+  });
+
+  /* filter chips (visual only) */
+  $$('.mku-seg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      $$('.mku-seg button').forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+    });
+  });
+
+  /* copy feedback, no clipboard or native UI needed */
+  var copyBtn = $('[data-copy]');
+  copyBtn.addEventListener('click', function () {
+    var label = $('span', copyBtn);
+    label.textContent = 'Copied';
+    setTimeout(function () { label.textContent = 'Copy'; }, 1500);
+  });
+
+  /* in-app dialog + toast */
+  var scrim = $('[data-scrim]');
+  var toast = $('[data-toast]');
+  var lastFocus = null;
+  var toastTimer = null;
+  var dialogs = {
+    run: {
+      title: 'Run Cadence now?',
+      body: 'It will read new prompts, screen them with TypeSafe and coach the 3 worst. This takes about a minute.',
+      ok: 'Run now',
+      done: 'Run started. Screening 2 new messages.'
+    },
+    review: {
+      title: 'Mark as reviewed?',
+      body: 'It leaves the queue and Today moves on to the next message. You can find it under Reviewed.',
+      ok: 'Mark as reviewed',
+      done: 'Marked as reviewed. 7 left in the queue.'
+    }
+  };
+  var current = null;
+  function openDialog(key, from) {
+    current = dialogs[key];
+    lastFocus = from;
+    $('[data-dlg-title]').textContent = current.title;
+    $('[data-dlg-body]').textContent = current.body;
+    $('[data-dlg-ok]').textContent = current.ok;
+    scrim.hidden = false;
+    $('[data-dlg-cancel]').focus();
+  }
+  function closeDialog() {
+    scrim.hidden = true;
+    if (lastFocus) lastFocus.focus();
+  }
+  $$('[data-dialog]').forEach(function (b) {
+    b.addEventListener('click', function () { openDialog(b.getAttribute('data-dialog'), b); });
+  });
+  $('[data-dlg-cancel]').addEventListener('click', closeDialog);
+  $('[data-dlg-ok]').addEventListener('click', function () {
+    var msg = current.done;
+    closeDialog();
+    $('[data-toast-text]').textContent = msg;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.hidden = true; }, 2600);
+  });
+  scrim.addEventListener('click', function (e) { if (e.target === scrim) closeDialog(); });
+  root.addEventListener('keydown', function (e) {
+    if (scrim.hidden) return;
+    if (e.key === 'Escape') { closeDialog(); return; }
+    if (e.key === 'Tab') {
+      var f = $$('button', scrim);
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+})();
+</script>
+</body>
+</html>

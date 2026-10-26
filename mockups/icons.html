@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cadence icon options</title>
+<style>
+  :root { --paper:#f4efe4; --surface:#fffdf8; --ink:#2a2622; --muted:#6a6358; --line:#ddd4c2; --accent:#a8480a; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:32px; background:var(--paper); color:var(--ink); font:15px/1.4 system-ui, sans-serif; }
+  h1 { font:600 26px Georgia, serif; margin:0 0 4px; }
+  p.sub { margin:0 0 24px; color:var(--muted); }
+  h2 { font:600 13px system-ui; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:28px 0 12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:14px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .card h3 { margin:0 0 2px; font:600 16px Georgia, serif; }
+  .card h3 b { color:var(--accent); margin-right:6px; }
+  .card p { margin:0 0 12px; font-size:12.5px; color:var(--muted); }
+  .row { display:flex; align-items:flex-end; gap:14px; }
+  .col { display:flex; flex-direction:column; gap:8px; align-items:center; }
+  .small { display:flex; gap:8px; align-items:flex-end; }
+  svg { display:block; }
+  .cream { --t:#f4efe4; --i:#2a2622; --a:#a8480a; }
+  .night { --t:#211e19; --i:#f0e9db; --a:#f0a95b; }
+  .cream svg.tile-outline, .night svg.tile-outline { }
+  .cream .edge { outline:1px solid #ddd4c2; border-radius:23%; }
+  .night .edge { outline:1px solid #37322a; border-radius:23%; }
+  .tb { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:6px; font:600 13px Georgia, serif; }
+  .tb.l { background:#fffdf8; color:#2a2622; border:1px solid #ddd4c2; }
+  .tb.d { background:#211e19; color:#f0e9db; border:1px solid #37322a; }
+  .tray { display:flex; gap:10px; margin-top:12px; font-size:11px; color:var(--muted); align-items:center; }
+  .strip { padding:6px 10px; border-radius:6px; display:flex; gap:8px; align-items:center; }
+  .strip.l { background:#e8e8ea; } .strip.d { background:#1e1e22; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- 1 Metronome, solid -->
+    <symbol id="i1" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <path d="M33 82 L67 82 L57 20 L43 20 Z" fill="var(--a)" stroke="var(--a)" stroke-width="5" stroke-linejoin="round"/>
+      <line x1="50" y1="72" x2="60" y2="32" stroke="var(--t)" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="57" cy="44" r="5.5" fill="var(--t)"/>
+    </symbol>
+    <!-- 2 Metronome mid-swing -->
+    <symbol id="i2" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <path d="M33 84 L67 84 L57 18 L43 18 Z" fill="none" stroke="var(--i)" stroke-width="4.5" stroke-linejoin="round"/>
+      <g opacity=".28"><g transform="rotate(-17 50 76)"><line x1="50" y1="76" x2="50" y2="26" stroke="var(--a)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="40" r="6" fill="var(--a)"/></g></g>
+      <g opacity=".14"><g transform="rotate(0 50 76)"><line x1="50" y1="76" x2="50" y2="26" stroke="var(--a)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="40" r="6" fill="var(--a)"/></g></g>
+      <g transform="rotate(17 50 76)"><line x1="50" y1="76" x2="50" y2="26" stroke="var(--a)" stroke-width="4.5" stroke-linecap="round"/><circle cx="50" cy="40" r="7" fill="var(--a)"/></g>
+      <circle cx="50" cy="76" r="4" fill="var(--i)"/>
+    </symbol>
+    <!-- 3 Pendulum only -->
+    <symbol id="i3" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <path d="M25 70 A46 46 0 0 0 75 70" fill="none" stroke="var(--i)" stroke-width="3" stroke-linecap="round" opacity=".25" transform="translate(0,-2)"/>
+      <g transform="rotate(24 50 16)">
+        <line x1="50" y1="16" x2="50" y2="62" stroke="var(--i)" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="50" cy="66" r="12" fill="var(--a)"/>
+      </g>
+      <circle cx="50" cy="16" r="5" fill="var(--i)"/>
+    </symbol>
+    <!-- 4 Text cursor -->
+    <symbol id="i4" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <rect x="14" y="42" width="24" height="7" rx="3.5" fill="var(--i)" opacity=".85"/>
+      <rect x="14" y="56" width="16" height="7" rx="3.5" fill="var(--i)" opacity=".4"/>
+      <g stroke="var(--a)" stroke-width="6" stroke-linecap="round" fill="none">
+        <line x1="56" y1="20" x2="56" y2="80"/>
+        <line x1="46" y1="20" x2="66" y2="20"/>
+        <line x1="46" y1="80" x2="66" y2="80"/>
+      </g>
+    </symbol>
+    <!-- 5 Quote mark as a beat (serif glyph; outline it for the final) -->
+    <symbol id="i5" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <text x="50" y="86" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="120" fill="var(--a)">&#8220;</text>
+    </symbol>
+    <!-- 6 Rewrite stroke -->
+    <symbol id="i6" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <rect x="18" y="27" width="64" height="7" rx="3.5" fill="var(--i)"/>
+      <rect x="18" y="45" width="24" height="7" rx="3.5" fill="var(--i)"/>
+      <rect x="48" y="45" width="34" height="7" rx="3.5" fill="var(--i)" opacity=".3"/>
+      <line x1="45" y1="48.5" x2="85" y2="48.5" stroke="var(--i)" stroke-width="3" stroke-linecap="round"/>
+      <rect x="48" y="62" width="28" height="9" rx="4.5" fill="var(--a)"/>
+    </symbol>
+    <!-- 7 Naturalness meter -->
+    <symbol id="i7" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <path d="M18 66 A32 32 0 0 1 82 66" fill="none" stroke="var(--i)" stroke-width="9" stroke-linecap="round" opacity=".2"/>
+      <path d="M18 66 A32 32 0 0 1 64.5 37.5" fill="none" stroke="var(--a)" stroke-width="9" stroke-linecap="round"/>
+      <line x1="50" y1="66" x2="62" y2="43" stroke="var(--i)" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="50" cy="66" r="6" fill="var(--i)"/>
+    </symbol>
+    <!-- 8 Serif C with a tick (serif glyph; outline it for the final) -->
+    <symbol id="i8" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <text x="46" y="75" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="96" fill="var(--i)">C</text>
+      <circle cx="70" cy="50" r="7" fill="var(--a)"/>
+    </symbol>
+    <!-- 9 Sentence of dashes -->
+    <symbol id="i9" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <g fill="var(--i)">
+        <rect x="16" y="26" width="26" height="9" rx="4.5"/><rect x="48" y="26" width="14" height="9" rx="4.5"/><rect x="68" y="26" width="16" height="9" rx="4.5"/>
+      </g>
+      <g fill="var(--a)">
+        <rect x="16" y="46" width="14" height="9" rx="4.5"/><rect x="36" y="46" width="30" height="9" rx="4.5"/><rect x="72" y="46" width="12" height="9" rx="4.5"/>
+      </g>
+      <g fill="var(--i)">
+        <rect x="16" y="66" width="34" height="9" rx="4.5"/><rect x="56" y="66" width="12" height="9" rx="4.5"/>
+      </g>
+    </symbol>
+    <!-- 10 Moon + tick -->
+    <symbol id="i10" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <circle cx="44" cy="46" r="28" fill="var(--i)"/>
+      <circle cx="58" cy="38" r="24" fill="var(--t)"/>
+      <line x1="64" y1="24" x2="72" y2="62" stroke="var(--a)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="73" cy="68" r="8" fill="var(--a)"/>
+    </symbol>
+    <!-- 11 Clock, one tick -->
+    <symbol id="i11" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="var(--t)"/>
+      <circle cx="50" cy="50" r="32" fill="none" stroke="var(--i)" stroke-width="5"/>
+      <g stroke="var(--i)" stroke-width="3" stroke-linecap="round" opacity=".5">
+        <line x1="50" y1="24" x2="50" y2="30"/><line x1="76" y1="50" x2="70" y2="50"/><line x1="50" y1="76" x2="50" y2="70"/><line x1="24" y1="50" x2="30" y2="50"/>
+      </g>
+      <line x1="50" y1="50" x2="36" y2="32" stroke="var(--a)" stroke-width="6" stroke-linecap="round"/>
+      <line x1="50" y1="50" x2="50" y2="33" stroke="var(--i)" stroke-width="4" stroke-linecap="round" opacity=".0"/>
+      <circle cx="50" cy="50" r="4.5" fill="var(--i)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<h1>Cadence icon options</h1>
+<p class="sub">Each option on a cream tile and an ink tile, at 128, 48, 32 and 16 px. Current icon for comparison is the last card.</p>
+
+<div class="grid" id="grid"></div>
+
+<script>
+  const items = [
+    ["1","Metronome, solid","Same glyph as the title bar. Most literal."],
+    ["2","Metronome mid-swing","Ghost arms show the arc, so the title-bar tick survives as a still."],
+    ["3","Pendulum only","Bare arm and weight. Simplest; best at tiny sizes."],
+    ["4","Text cursor","An I-beam caret after a line of text. The app reads what you type."],
+    ["5","Quote mark","A serif opening quote as the beat. Prompts and rhythm at once."],
+    ["6","Rewrite stroke","A word struck out and replaced in orange. The coaching step."],
+    ["7","Naturalness meter","Half-ring gauge whose needle is also a metronome arm."],
+    ["8","Serif C + tick","Matches the serif wordmark. Orange dot is the beat."],
+    ["9","Sentence of dashes","A line of text read as a rhythm. Closest to the current bars."],
+    ["10","Moon + tick","For the nightly 22:00 run."],
+    ["11","Clock, one tick","Calm and minimal; a bit generic."],
+  ];
+  const sz = (id, n) => `<svg width="${n}" height="${n}" viewBox="0 0 100 100"><use href="#i${id}"/></svg>`;
+  const theme = (cls, id) => `
+    <div class="${cls}">
+      <div class="col">
+        <div class="edge">${sz(id,128)}</div>
+        <div class="small">${sz(id,48)}${sz(id,32)}${sz(id,16)}</div>
+      </div>
+    </div>`;
+  let html = items.map(([id,name,desc]) => `
+    <div class="card">
+      <h3><b>${id}</b>${name}</h3>
+      <p>${desc}</p>
+      <div class="row">${theme("cream", id)}${theme("night", id)}</div>
+    </div>`).join("");
+  html += `
+    <div class="card">
+      <h3><b>·</b>Current icon</h3>
+      <p>Navy tile, teal equalizer bars. Does not match the cream UI.</p>
+      <div class="row"><div class="col">
+        <svg width="128" height="128" viewBox="0 0 512 512">
+          <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b2433"/><stop offset="1" stop-color="#0d1118"/></linearGradient>
+          <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs>
+          <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+          <g fill="url(#bar)"><rect x="92" y="212" width="48" height="88" rx="24"/><rect x="164" y="152" width="48" height="208" rx="24"/><rect x="236" y="104" width="48" height="304" rx="24"/><rect x="308" y="172" width="48" height="168" rx="24"/><rect x="380" y="224" width="48" height="64" rx="24"/></g>
+        </svg></div></div>
+    </div>`;
+  document.getElementById("grid").innerHTML = html;
+</script>
+</body>
+</html>

@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence - mockup (Tuning Room)</title>
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0910;padding:16px;box-sizing:border-box}
+
+.mk-frontend-design{
+  --bg:#16111d; --panel:#1e1828; --panel2:#282035; --line:#3a2f4a; --line2:#4b3d60;
+  --text:#f3eef9; --dim:#b4a9c6; --faint:#8a7ea0;
+  --tune:#6fe3c6; --tune-ink:#07241d; --tune-soft:rgba(111,227,198,.14);
+  --amber:#f5b94a; --rose:#ff7a93; --rose-soft:rgba(255,122,147,.16);
+  --focus:#b79cff;
+  --ui:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  position:relative; width:1100px; max-width:100%; height:720px; overflow:hidden;
+  display:grid; grid-template-columns:188px 1fr; grid-template-rows:40px 1fr 32px;
+  background:var(--bg); color:var(--text); font:14px/1.45 var(--ui);
+  border:1px solid var(--line); border-radius:12px;
+  box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.4);
+}
+.mk-frontend-design.light{
+  --bg:#f4f1f8; --panel:#ffffff; --panel2:#ede8f5; --line:#d9d0e6; --line2:#bfb2d4;
+  --text:#1e1630; --dim:#5b4f70; --faint:#7a6e90;
+  --tune:#0b7a64; --tune-ink:#ffffff; --tune-soft:rgba(11,122,100,.11);
+  --amber:#8f5a00; --rose:#b8203f; --rose-soft:rgba(184,32,63,.10);
+  --focus:#5b3fd1;
+  box-shadow:0 30px 80px rgba(30,22,48,.28), 0 0 0 1px rgba(0,0,0,.05);
+}
+.mk-frontend-design, .mk-frontend-design *, .mk-frontend-design *::before, .mk-frontend-design *::after{box-sizing:border-box}
+.mk-frontend-design [hidden]{display:none !important}
+.mk-frontend-design button{font:inherit;color:inherit;cursor:pointer}
+.mk-frontend-design :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+.mk-frontend-design svg.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* title bar */
+.mk-frontend-design .titlebar{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding-left:14px;background:var(--panel);border-bottom:1px solid var(--line);-webkit-app-region:drag;user-select:none}
+.mk-frontend-design .brand{display:flex;align-items:center;gap:9px;font:600 15px var(--serif);letter-spacing:.2px}
+.mk-frontend-design .brand .mark{width:20px;height:20px;color:var(--tune)}
+.mk-frontend-design .tb-space{flex:1}
+.mk-frontend-design .theme{display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border:1px solid var(--line);border-radius:13px;background:transparent;color:var(--dim);font-size:12px}
+.mk-frontend-design .theme:hover{border-color:var(--line2);color:var(--text)}
+.mk-frontend-design .wc{display:flex;height:100%}
+.mk-frontend-design .wc button{width:46px;height:100%;border:0;background:transparent;color:var(--dim);display:grid;place-items:center}
+.mk-frontend-design .wc button:hover{background:var(--panel2);color:var(--text)}
+.mk-frontend-design .wc button.close:hover{background:#d13c4f;color:#fff}
+.mk-frontend-design .wc svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.2}
+
+/* nav */
+.mk-frontend-design .nav{display:flex;flex-direction:column;gap:2px;padding:18px 12px;background:var(--panel);border-right:1px solid var(--line)}
+.mk-frontend-design .nav-item{position:relative;display:flex;align-items:center;gap:10px;width:100%;height:38px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:var(--dim);text-align:left}
+.mk-frontend-design .nav-item:hover{background:var(--panel2);color:var(--text)}
+.mk-frontend-design .nav-item[aria-selected="true"]{background:var(--panel2);color:var(--text);font-weight:600}
+.mk-frontend-design .nav-item[aria-selected="true"]::before{content:"";position:absolute;left:-12px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--tune)}
+.mk-frontend-design .nav-item .count{margin-left:auto;min-width:22px;height:20px;padding:0 6px;border-radius:10px;background:var(--rose-soft);color:var(--rose);font-size:12px;font-weight:700;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.mk-frontend-design .nav-foot{margin-top:auto;padding:12px;border:1px dashed var(--line2);border-radius:10px;color:var(--dim);font-size:12.5px;line-height:1.4}
+.mk-frontend-design .nav-foot b{display:block;color:var(--text);font:600 15px var(--serif);margin-bottom:2px}
+
+/* main + views */
+.mk-frontend-design .main{overflow:hidden;position:relative}
+.mk-frontend-design .view{position:absolute;inset:0;overflow-y:auto;padding:26px 30px 28px;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.mk-frontend-design .view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
+.mk-frontend-design .view-head h1{margin:0;font:600 26px/1.15 var(--serif);letter-spacing:-.2px}
+.mk-frontend-design .view-head p{margin:4px 0 0;color:var(--dim)}
+.mk-frontend-design h2{margin:0;font:600 17px/1.2 var(--serif)}
+.mk-frontend-design h3{margin:0 0 6px;font:600 13.5px/1.3 var(--ui);color:var(--dim)}
+.mk-frontend-design .muted{color:var(--dim)}
+.mk-frontend-design .card{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+
+.mk-frontend-design .btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--line2);background:transparent;color:var(--text);font-weight:600;font-size:13px}
+.mk-frontend-design .btn:hover{background:var(--panel2)}
+.mk-frontend-design .btn.primary{background:var(--tune);border-color:var(--tune);color:var(--tune-ink)}
+.mk-frontend-design .btn.primary:hover{filter:brightness(1.08);background:var(--tune)}
+.mk-frontend-design .btn.danger{background:var(--rose);border-color:var(--rose);color:#1a0610}
+.mk-frontend-design.light .btn.danger{color:#fff}
+.mk-frontend-design .btn.sm{height:28px;padding:0 10px;font-size:12.5px}
+
+/* meter: four steps that rise, plus the number, always */
+.mk-frontend-design .meter{display:inline-flex;align-items:center;gap:8px;--c:var(--amber)}
+.mk-frontend-design .meter.low{--c:var(--rose)}
+.mk-frontend-design .meter.high{--c:var(--tune)}
+.mk-frontend-design .meter .bars{display:inline-flex;align-items:flex-end;gap:2px;height:16px}
+.mk-frontend-design .meter .bars i{width:5px;border-radius:1.5px;background:var(--line2)}
+.mk-frontend-design .meter .bars i:nth-child(1){height:5px}
+.mk-frontend-design .meter .bars i:nth-child(2){height:8px}
+.mk-frontend-design .meter .bars i:nth-child(3){height:12px}
+.mk-frontend-design .meter .bars i:nth-child(4){height:16px}
+.mk-frontend-design .meter .bars i.on{background:var(--c)}
+.mk-frontend-design .meter .num{font-weight:700;font-variant-numeric:tabular-nums;min-width:2.2ch;color:var(--text)}
+.mk-frontend-design .meter.lg .bars{height:22px}
+.mk-frontend-design .meter.lg .bars i{width:7px}
+.mk-frontend-design .meter.lg .bars i:nth-child(1){height:7px}
+.mk-frontend-design .meter.lg .bars i:nth-child(2){height:11px}
+.mk-frontend-design .meter.lg .bars i:nth-child(3){height:16px}
+.mk-frontend-design .meter.lg .bars i:nth-child(4){height:22px}
+.mk-frontend-design .meter.lg .num{font:700 24px var(--serif)}
+.mk-frontend-design .meter .of{color:var(--faint);font-size:12px;margin-left:-4px}
+
+.mk-frontend-design .chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;border:1px solid var(--line2);color:var(--dim);font-size:12px;white-space:nowrap}
+.mk-frontend-design .chip.ok{border-color:var(--tune);color:var(--tune)}
+
+/* diff marks: struck-through and underlined, so colour is never alone */
+.mk-frontend-design del{color:var(--rose);text-decoration:line-through;text-decoration-thickness:2px;background:var(--rose-soft);border-radius:3px;padding:0 2px}
+.mk-frontend-design ins{color:var(--tune);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:5px;background:var(--tune-soft);border-radius:3px;padding:0 2px}
+
+/* ---- Today ---- */
+.mk-frontend-design .today-grid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:20px;align-items:start}
+.mk-frontend-design .dial-card{padding:20px 20px 18px;text-align:center}
+.mk-frontend-design .dial{width:100%;height:auto;display:block;overflow:visible}
+.mk-frontend-design .dial .zone{fill:none;stroke-width:14}
+.mk-frontend-design .dial .z0{stroke:var(--rose);opacity:.55}
+.mk-frontend-design .dial .z1{stroke:var(--amber);opacity:.55}
+.mk-frontend-design .dial .z2{stroke:var(--tune);opacity:.55}
+.mk-frontend-design .dial .tick{stroke:var(--text);stroke-width:2.5}
+.mk-frontend-design .dial .goal{stroke:var(--text);stroke-width:2;stroke-dasharray:3 3}
+.mk-frontend-design .dial text{fill:var(--dim);font:600 12px var(--ui)}
+.mk-frontend-design .needle{transform-origin:120px 120px;transform:rotate(-90deg)}
+.mk-frontend-design .needle line{stroke:var(--text);stroke-width:3;stroke-linecap:round}
+.mk-frontend-design .needle circle{fill:var(--text)}
+.mk-frontend-design .dial-wrap.go .needle{transform:rotate(24deg);transition:transform 1.5s cubic-bezier(.2,.9,.3,1.18)}
+.mk-frontend-design .big{display:flex;align-items:baseline;justify-content:center;gap:6px;margin-top:2px}
+.mk-frontend-design .big b{font:600 64px/1 var(--serif);font-variant-numeric:lining-nums}
+.mk-frontend-design .big span{color:var(--faint);font:500 18px var(--serif)}
+.mk-frontend-design .dial-card p{margin:8px 0 0;color:var(--dim)}
+.mk-frontend-design .dial-card .gap{color:var(--text);font-weight:600}
+.mk-frontend-design .next-card{margin-top:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.mk-frontend-design .next-card .when{display:flex;align-items:baseline;gap:10px}
+.mk-frontend-design .next-card .when b{font:600 30px/1 var(--serif);font-variant-numeric:lining-nums}
+.mk-frontend-design .next-card .when span{color:var(--dim)}
+.mk-frontend-design .runtrack{display:flex;gap:6px;align-items:center;color:var(--dim);font-size:12.5px}
+.mk-frontend-design .runtrack svg{color:var(--tune)}
+
+.mk-frontend-design .queue{padding:6px 0}
+.mk-frontend-design .queue-head{display:flex;justify-content:space-between;align-items:baseline;padding:14px 18px 10px}
+.mk-frontend-design .qrow{display:grid;grid-template-columns:104px minmax(0,1fr) 18px;gap:14px;align-items:center;width:100%;padding:12px 18px;border:0;border-top:1px solid var(--line);background:transparent;text-align:left}
+.mk-frontend-design .qrow:hover{background:var(--panel2)}
+.mk-frontend-design .qtext{font:17px/1.35 var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.mk-frontend-design .qmeta{display:flex;gap:10px;align-items:center;margin-top:5px;color:var(--faint);font-size:12.5px}
+.mk-frontend-design .qrow .go{color:var(--faint)}
+
+/* ---- Messages ---- */
+.mk-frontend-design .seg{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.mk-frontend-design .seg button{height:28px;padding:0 12px;border:0;border-radius:7px;background:transparent;color:var(--dim);font-size:13px}
+.mk-frontend-design .seg button[aria-pressed="true"]{background:var(--panel2);color:var(--text);font-weight:600}
+.mk-frontend-design .seg button .n{margin-left:6px;color:var(--faint);font-variant-numeric:tabular-nums}
+.mk-frontend-design .mlist{display:flex;flex-direction:column;gap:10px}
+.mk-frontend-design .mrow{display:grid;grid-template-columns:104px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 16px;width:100%;text-align:left}
+.mk-frontend-design .mrow:hover{background:var(--panel2)}
+.mk-frontend-design .mrow .qtext{font-size:15.5px}
+.mk-frontend-design .mcard{overflow:hidden;border-color:var(--line2)}
+.mk-frontend-design .mc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);color:var(--dim);font-size:13px}
+.mk-frontend-design .mc-head .right{display:flex;align-items:center;gap:12px}
+.mk-frontend-design .hero{padding:22px 24px 18px;background:linear-gradient(180deg,var(--tune-soft),transparent 80%)}
+.mk-frontend-design .hero-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.mk-frontend-design .hero-top h3{margin:0;color:var(--tune);font-size:13.5px}
+.mk-frontend-design .reg{display:inline-flex;padding:2px;border:1px solid var(--line2);border-radius:8px}
+.mk-frontend-design .reg button{height:24px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--dim);font-size:12.5px}
+.mk-frontend-design .reg button[aria-pressed="true"]{background:var(--tune);color:var(--tune-ink);font-weight:700}
+.mk-frontend-design .rewrite{margin:0;max-width:34em;font:600 29px/1.3 var(--serif);letter-spacing:-.2px}
+.mk-frontend-design .rewrite ins{font-weight:600}
+.mk-frontend-design .hero-actions{display:flex;gap:10px;margin-top:16px;align-items:center}
+.mk-frontend-design .orig-block{margin:0 24px;padding:14px 0 16px;border-top:1px solid var(--line);display:grid;grid-template-columns:120px 1fr;gap:6px 16px;align-items:baseline}
+.mk-frontend-design .orig-block h3{margin:0}
+.mk-frontend-design .orig{margin:0;font:18px/1.45 var(--serif);color:var(--dim)}
+.mk-frontend-design .why{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:0 24px 20px}
+.mk-frontend-design .why section{padding:14px 16px;border-radius:10px;background:var(--panel2)}
+.mk-frontend-design .why p{margin:0;max-width:40em}
+.mk-frontend-design .why .tip{border-left:3px solid var(--amber)}
+.mk-frontend-design .why .tip p{font:600 16px/1.4 var(--serif)}
+.mk-frontend-design .mc-foot{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-top:1px solid var(--line);color:var(--dim)}
+.mk-frontend-design .reviewed-note{display:none;align-items:center;gap:6px;color:var(--tune);font-weight:600}
+.mk-frontend-design .mcard.is-reviewed .reviewed-note{display:inline-flex}
+.mk-frontend-design .mcard.is-reviewed .mark-btn{display:none}
+
+/* ---- Patterns ---- */
+.mk-frontend-design .pat-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.mk-frontend-design .pat-card{padding:18px 20px}
+.mk-frontend-design .bar-list{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:14px}
+.mk-frontend-design .bar-row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:baseline}
+.mk-frontend-design .bar-row .lab{font-weight:600}
+.mk-frontend-design .bar-row .cnt{font-variant-numeric:tabular-nums;font-weight:700}
+.mk-frontend-design .bar-row .cnt small{font-weight:400;color:var(--faint);margin-left:6px}
+.mk-frontend-design .track{grid-column:1/-1;height:8px;border-radius:4px;background:var(--panel2);overflow:hidden;margin:3px 0}
+.mk-frontend-design .track i{display:block;height:100%;border-radius:4px;background:var(--rose)}
+.mk-frontend-design .bar-row.pt .track i{background:var(--amber)}
+.mk-frontend-design .bar-row .ex{grid-column:1/-1;font:15px/1.4 var(--serif);color:var(--dim)}
+.mk-frontend-design .chart{width:100%;height:auto;display:block;margin-top:10px}
+.mk-frontend-design .chart .grid{stroke:var(--line);stroke-width:1}
+.mk-frontend-design .chart text{fill:var(--faint);font:11px var(--ui)}
+.mk-frontend-design .chart .goalln{stroke:var(--tune);stroke-width:1.5;stroke-dasharray:2 4}
+.mk-frontend-design .chart .goaltx{fill:var(--tune);font-weight:600}
+.mk-frontend-design .chart .daily{fill:none;stroke:var(--faint);stroke-width:1.5}
+.mk-frontend-design .chart .roll{fill:none;stroke:var(--text);stroke-width:2.5;stroke-dasharray:7 4}
+.mk-frontend-design .chart .dot{fill:var(--bg);stroke:var(--faint);stroke-width:1.5}
+.mk-frontend-design .chart .endtx{fill:var(--text);font:700 13px var(--ui)}
+.mk-frontend-design .legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 0;color:var(--dim);font-size:12.5px}
+.mk-frontend-design .legend i{display:inline-block;width:20px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.mk-frontend-design .legend .k1{border-color:var(--faint)}
+.mk-frontend-design .legend .k2{border-color:var(--text);border-top-style:dashed}
+.mk-frontend-design .legend .k3{border-color:var(--tune);border-top-style:dotted}
+.mk-frontend-design .impact{list-style:none;margin:12px 0 0;padding:0}
+.mk-frontend-design .impact li{display:grid;grid-template-columns:1fr auto;gap:2px 14px;padding:10px 0;border-top:1px solid var(--line)}
+.mk-frontend-design .impact li:first-child{border-top:0}
+.mk-frontend-design .impact .lab{font-weight:600}
+.mk-frontend-design .impact .sides{color:var(--dim);font-variant-numeric:tabular-nums}
+.mk-frontend-design .impact .sides b{color:var(--text)}
+.mk-frontend-design .verdict{grid-row:1/3;grid-column:2;align-self:center;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;border:1px solid var(--line2);font-size:12.5px;font-weight:600}
+.mk-frontend-design .verdict.down{border-color:var(--tune);color:var(--tune)}
+.mk-frontend-design .verdict svg{width:13px;height:13px}
+
+/* ---- status bar ---- */
+.mk-frontend-design .status{grid-column:1/-1;display:flex;align-items:center;gap:16px;padding:0 14px;background:var(--panel);border-top:1px solid var(--line);color:var(--dim);font-size:12.5px}
+.mk-frontend-design .status b{color:var(--text);font-variant-numeric:tabular-nums}
+.mk-frontend-design .status .sep{width:1px;height:14px;background:var(--line2)}
+.mk-frontend-design .status .run{display:inline-flex;align-items:center;gap:6px}
+.mk-frontend-design .status .run svg{color:var(--tune);width:14px;height:14px}
+.mk-frontend-design .status .next{margin-left:auto}
+.mk-frontend-design .status .btn{height:24px;padding:0 10px;font-size:12px}
+@keyframes fd-spin{to{transform:rotate(360deg)}}
+.mk-frontend-design .status .run.busy svg{animation:fd-spin 1s linear infinite}
+
+/* ---- in-app dialog ---- */
+.mk-frontend-design .scrim{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:rgba(8,5,12,.62);backdrop-filter:blur(3px)}
+.mk-frontend-design.light .scrim{background:rgba(30,22,48,.35)}
+.mk-frontend-design .dialog{width:420px;max-width:calc(100% - 40px);padding:22px 24px 20px;background:var(--panel);border:1px solid var(--line2);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.mk-frontend-design .dialog h2{font-size:21px;margin-bottom:8px}
+.mk-frontend-design .dialog p{margin:0 0 18px;color:var(--dim)}
+.mk-frontend-design .dialog .acts{display:flex;justify-content:flex-end;gap:10px}
+.mk-frontend-design .scrim:not([hidden]) .dialog{animation:fd-pop .18s ease-out}
+@keyframes fd-pop{from{transform:translateY(8px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .mk-frontend-design .dial-wrap.go .needle{transition:none}
+  .mk-frontend-design .scrim:not([hidden]) .dialog{animation:none}
+  .mk-frontend-design .status .run.busy svg{animation:none}
+}
+</style>
+</head>
+<body>
+<div class="mk-frontend-design" id="fd-root">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="fd-tray" viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 3h5L16 13h5"/></symbol>
+      <symbol id="fd-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+      <symbol id="fd-chart" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 8-9"/><path d="M3 21h18"/></symbol>
+      <symbol id="fd-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></symbol>
+      <symbol id="fd-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
+      <symbol id="fd-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+      <symbol id="fd-ic-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></symbol>
+      <symbol id="fd-caret" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+      <symbol id="fd-redo" viewBox="0 0 24 24"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.5 3L3 8"/><path d="M3 3v5h5"/></symbol>
+      <symbol id="fd-spin" viewBox="0 0 24 24"><path d="M12 3a9 9 0 019 9"/></symbol>
+      <symbol id="fd-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+      <symbol id="fd-flat" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="fd-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="titlebar">
+    <span class="brand">
+      <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8l-2.5-16h-3z"/><path d="M12 15L16.5 7"/><circle cx="16.8" cy="6.4" r="1.2" fill="currentColor"/></svg>
+      Cadence
+    </span>
+    <span class="tb-space"></span>
+    <button type="button" class="theme" id="fd-theme" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#fd-moon"/></svg><span>Night</span></button>
+    <div class="wc">
+      <button type="button" aria-label="Minimize"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6h10"/></svg></button>
+      <button type="button" aria-label="Maximize"><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1.5" width="9" height="9"/></svg></button>
+      <button type="button" class="close" aria-label="Close"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg></button>
+    </div>
+  </header>
+
+  <nav class="nav" role="tablist" aria-label="Views" aria-orientation="vertical">
+    <button type="button" class="nav-item" role="tab" data-tab="today" aria-selected="true"><svg class="ic" aria-hidden="true"><use href="#fd-tray"/></svg>Today<span class="count">8</span></button>
+    <button type="button" class="nav-item" role="tab" data-tab="all" aria-selected="false"><svg class="ic" aria-hidden="true"><use href="#fd-list"/></svg>Messages</button>
+    <button type="button" class="nav-item" role="tab" data-tab="patterns" aria-selected="false"><svg class="ic" aria-hidden="true"><use href="#fd-chart"/></svg>Patterns</button>
+    <button type="button" class="nav-item" role="tab" data-tab="settings" aria-selected="false" disabled style="opacity:.5;cursor:default"><svg class="ic" aria-hidden="true"><use href="#fd-gear"/></svg>Settings</button>
+    <div class="nav-foot"><b>Run at 22:00</b>Cadence reads your Claude Code prompts every night and picks the ones to practise.</div>
+  </nav>
+
+  <main class="main">
+
+    <!-- TODAY -->
+    <section class="view" data-view="today" role="tabpanel" aria-label="Today">
+      <div class="view-head">
+        <div>
+          <h1>Thursday, 22 October</h1>
+          <p>8 messages are waiting for a rewrite. The weakest come first.</p>
+        </div>
+        <button type="button" class="btn primary" data-open-dialog="run"><svg class="ic" aria-hidden="true"><use href="#fd-play"/></svg>Run now</button>
+      </div>
+
+      <div class="today-grid">
+        <div>
+          <div class="card dial-card">
+            <div class="dial-wrap" id="fd-dialwrap">
+              <svg class="dial" viewBox="0 0 240 150" role="img" aria-label="Today's average naturalness is 1.9 out of 3. The goal is 2.0.">
+                <path class="zone z0" d="M30 120 A90 90 0 0 1 210 120" pathLength="3" stroke-dasharray="0.96 6" stroke-dashoffset="0"/>
+                <path class="zone z1" d="M30 120 A90 90 0 0 1 210 120" pathLength="3" stroke-dasharray="0.96 6" stroke-dashoffset="-1"/>
+                <path class="zone z2" d="M30 120 A90 90 0 0 1 210 120" pathLength="3" stroke-dasharray="0.96 6" stroke-dashoffset="-2"/>
+                <line class="goal" x1="157" y1="55.9" x2="171" y2="31.6"/>
+                <text x="14" y="140" text-anchor="middle">0</text>
+                <text x="43" y="42" text-anchor="middle">1</text>
+                <text x="193" y="42" text-anchor="middle">2</text>
+                <text x="226" y="140" text-anchor="middle">3</text>
+                <g class="needle"><line x1="120" y1="120" x2="120" y2="48"/><circle cx="120" cy="120" r="7"/></g>
+              </svg>
+            </div>
+            <div class="big"><b>1.9</b><span>of 3</span></div>
+            <p>Average naturalness today, from 14 messages.</p>
+            <p><span class="gap">0.1 below your goal of 2.0.</span> Yesterday it was 1.7.</p>
+          </div>
+
+          <div class="card next-card">
+            <div class="when"><b>22:00</b><span>tonight, in 3 h 13 min</span></div>
+            <div class="runtrack"><svg class="ic" aria-hidden="true"><use href="#fd-check"/></svg>Last night: screened 10, queued 8</div>
+          </div>
+        </div>
+
+        <div class="card queue">
+          <div class="queue-head"><h2>Worst first</h2><span class="muted">5 of 8 shown</span></div>
+          <button type="button" class="qrow" data-goto="all">
+            <span class="meter" data-v="0.8"></span>
+            <span><span class="qtext">Please to check the deploy when you have time.</span><span class="qmeta"><span>web-app</span><span>5 hours ago</span><span class="chip">Grammar</span></span></span>
+            <svg class="ic go" aria-hidden="true"><use href="#fd-caret"/></svg>
+          </button>
+          <button type="button" class="qrow" data-goto="all">
+            <span class="meter" data-v="1.1"></span>
+            <span><span class="qtext">I am remembering you that the release is on Friday.</span><span class="qmeta"><span>web-app</span><span>yesterday</span><span class="chip">Portuguese-style phrasing</span></span></span>
+            <svg class="ic go" aria-hidden="true"><use href="#fd-caret"/></svg>
+          </button>
+          <button type="button" class="qrow" data-goto="all">
+            <span class="meter" data-v="1.2"></span>
+            <span><span class="qtext">I will send you the report until the end of the day.</span><span class="qmeta"><span>billing-api</span><span>2 hours ago</span><span class="chip">Preposition or word pairing</span></span></span>
+            <svg class="ic go" aria-hidden="true"><use href="#fd-caret"/></svg>
+          </button>
+          <button type="button" class="qrow" data-goto="all">
+            <span class="meter" data-v="1.3"></span>
+            <span><span class="qtext">The thing is that the tests they are failing again in the CI.</span><span class="qmeta"><span>billing-api</span><span>yesterday</span><span class="chip">Word order</span></span></span>
+            <svg class="ic go" aria-hidden="true"><use href="#fd-caret"/></svg>
+          </button>
+          <button type="button" class="qrow" data-goto="all">
+            <span class="meter" data-v="1.4"></span>
+            <span><span class="qtext">I am agree with the proposal, let's go ahead.</span><span class="qmeta"><span>web-app</span><span>9 hours ago</span><span class="chip">Grammar</span></span></span>
+            <svg class="ic go" aria-hidden="true"><use href="#fd-caret"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MESSAGES -->
+    <section class="view" data-view="all" role="tabpanel" aria-label="Messages" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Messages</h1>
+          <p>Open one to see how a native speaker would say it.</p>
+        </div>
+        <div class="seg" role="group" aria-label="Filter">
+          <button type="button" aria-pressed="true">Queue<span class="n">8</span></button>
+          <button type="button" aria-pressed="false">All<span class="n">12</span></button>
+          <button type="button" aria-pressed="false">Reviewed<span class="n">1</span></button>
+        </div>
+      </div>
+
+      <div class="mlist">
+        <button type="button" class="card mrow">
+          <span class="meter" data-v="0.8"></span>
+          <span><span class="qtext">Please to check the deploy when you have time.</span><span class="qmeta"><span>web-app</span><span>5 hours ago</span></span></span>
+          <span class="chip">Grammar</span>
+        </button>
+
+        <article class="card mcard" id="fd-card">
+          <header class="mc-head">
+            <span>web-app, sent yesterday</span>
+            <span class="right"><span class="chip">Portuguese-style phrasing</span><span class="meter lg low" data-v="1.1" data-of="1"></span></span>
+          </header>
+
+          <div class="hero">
+            <div class="hero-top">
+              <h3>Say it like this</h3>
+              <div class="reg" role="group" aria-label="Register">
+                <button type="button" data-reg="casual" aria-pressed="true">Casual</button>
+                <button type="button" data-reg="pro" aria-pressed="false">Professional</button>
+              </div>
+            </div>
+            <p class="rewrite" id="fd-rewrite" aria-live="polite"><ins>Just a reminder:</ins> the release is on Friday.</p>
+            <div class="hero-actions">
+              <button type="button" class="btn primary" id="fd-copy"><svg class="ic" aria-hidden="true"><use href="#fd-ic-copy"/></svg><span>Copy rewrite</span></button>
+              <button type="button" class="btn"><svg class="ic" aria-hidden="true"><use href="#fd-redo"/></svg>Try it in your own words</button>
+            </div>
+          </div>
+
+          <div class="orig-block">
+            <h3>What you wrote</h3>
+            <p class="orig"><del>I am remembering you that</del> the release is on Friday.</p>
+          </div>
+
+          <div class="why">
+            <section>
+              <h3>What was off</h3>
+              <p>"Remember someone of something" is Portuguese word order carried into English. In English you remind someone.</p>
+            </section>
+            <section class="tip">
+              <h3>Remember</h3>
+              <p>Say "remind you that", not "remember you that".</p>
+            </section>
+          </div>
+
+          <footer class="mc-foot">
+            <span class="muted">Coached 2 minutes ago</span>
+            <button type="button" class="btn sm mark-btn" data-open-dialog="review"><svg class="ic" aria-hidden="true"><use href="#fd-check"/></svg>Mark reviewed</button>
+            <span class="reviewed-note"><svg class="ic" aria-hidden="true"><use href="#fd-check"/></svg>Reviewed just now</span>
+          </footer>
+        </article>
+
+        <button type="button" class="card mrow">
+          <span class="meter" data-v="1.2"></span>
+          <span><span class="qtext">I will send you the report until the end of the day.</span><span class="qmeta"><span>billing-api</span><span>2 hours ago</span></span></span>
+          <span class="chip">Preposition or word pairing</span>
+        </button>
+        <button type="button" class="card mrow">
+          <span class="meter" data-v="1.3"></span>
+          <span><span class="qtext">The thing is that the tests they are failing again in the CI.</span><span class="qmeta"><span>billing-api</span><span>yesterday</span></span></span>
+          <span class="chip">Word order</span>
+        </button>
+        <button type="button" class="card mrow">
+          <span class="meter" data-v="1.8"></span>
+          <span><span class="qtext">Hey dude, can you check it asap?</span><span class="qmeta"><span>ops</span><span>yesterday</span></span></span>
+          <span class="chip">Tone for a work chat</span>
+        </button>
+        <button type="button" class="card mrow">
+          <span class="meter" data-v="2.9"></span>
+          <span><span class="qtext">Let me know if you need anything else from my side.</span><span class="qmeta"><span>web-app</span><span>7 hours ago</span></span></span>
+          <span class="chip ok">Sounds native</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- PATTERNS -->
+    <section class="view" data-view="patterns" role="tabpanel" aria-label="Patterns" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Patterns</h1>
+          <p>The same slips keep coming back. Grammar and word pairing lead the list.</p>
+        </div>
+      </div>
+
+      <div class="pat-grid">
+        <div class="card pat-card">
+          <h2>Where you lose naturalness</h2>
+          <ol class="bar-list">
+            <li class="bar-row"><span class="lab">Grammar</span><span class="cnt">14<small>avg 1.3</small></span><span class="track"><i style="width:100%"></i></span><span class="ex"><del>I am agree</del> <ins>I agree</ins></span></li>
+            <li class="bar-row"><span class="lab">Preposition or word pairing</span><span class="cnt">7<small>avg 1.4</small></span><span class="track"><i style="width:50%"></i></span><span class="ex"><del>until the end of the day</del> <ins>by the end of the day</ins></span></li>
+            <li class="bar-row"><span class="lab">Portuguese-style phrasing</span><span class="cnt">6<small>avg 1.1</small></span><span class="track"><i style="width:43%"></i></span><span class="ex"><del>remember you that</del> <ins>remind you that</ins></span></li>
+            <li class="bar-row pt"><span class="lab">Word choice</span><span class="cnt">5<small>avg 1.8</small></span><span class="track"><i style="width:36%"></i></span><span class="ex"><del>give a look</del> <ins>take a look</ins></span></li>
+            <li class="bar-row pt"><span class="lab">Word order</span><span class="cnt">3<small>avg 1.3</small></span><span class="track"><i style="width:21%"></i></span><span class="ex"><del>the tests they are failing</del> <ins>the tests are failing</ins></span></li>
+            <li class="bar-row pt"><span class="lab">Tone for a work chat</span><span class="cnt">3<small>avg 1.8</small></span><span class="track"><i style="width:21%"></i></span><span class="ex"><del>Hey dude, check it asap</del> <ins>Could you check this when you have a moment?</ins></span></li>
+          </ol>
+        </div>
+
+        <div>
+          <div class="card pat-card">
+            <h2>Naturalness, last 14 days</h2>
+            <svg class="chart" id="fd-chart-svg" viewBox="0 0 460 210" role="img" aria-label="Daily average naturalness for 14 days, rising from 1.5 to 1.9, with a 7-day average ending at 1.8 and a goal of 2.0."></svg>
+            <p class="legend"><span><i class="k1"></i>Daily average</span><span><i class="k2"></i>7-day average</span><span><i class="k3"></i>Goal 2.0</span></p>
+          </div>
+
+          <div class="card pat-card" style="margin-top:20px">
+            <h2>Does coaching help?</h2>
+            <ul class="impact">
+              <li><span class="lab">Grammar</span><span class="sides">Before <b>41%</b> (12 of 29) &nbsp; After <b>29%</b> (9 of 31)</span><span class="verdict down"><svg class="ic" aria-hidden="true"><use href="#fd-down"/></svg>Down</span></li>
+              <li><span class="lab">Preposition or word pairing</span><span class="sides">Before <b>18%</b> (5 of 28) &nbsp; After <b>17%</b> (4 of 24)</span><span class="verdict"><svg class="ic" aria-hidden="true"><use href="#fd-flat"/></svg>No change</span></li>
+              <li><span class="lab">Portuguese-style phrasing</span><span class="sides">Before <b>33%</b> (3 of 9) &nbsp; After <b>n/a</b> (0 of 3)</span><span class="verdict">Not enough data yet</span></li>
+            </ul>
+            <p class="muted" style="margin:10px 0 0;font-size:12.5px">Share of screened messages flagged, before and after you first coached each issue. Not proof of cause.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="status" aria-live="polite">
+    <span><b>8</b> queued</span>
+    <span><b>1</b> reviewed</span>
+    <span><b>2</b> pending</span>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="run" id="fd-run"><svg class="ic" aria-hidden="true"><use href="#fd-check"/></svg><span id="fd-runtext">Last run ok, yesterday</span></span>
+    <span class="next">Next run Thu 22:00</span>
+    <button type="button" class="btn" data-open-dialog="run" id="fd-runbtn"><svg class="ic" aria-hidden="true"><use href="#fd-play"/></svg>Run now</button>
+  </footer>
+
+  <!-- in-app dialog, never a native alert -->
+  <div class="scrim" id="fd-scrim" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="fd-dtitle" aria-describedby="fd-dlead">
+      <h2 id="fd-dtitle"></h2>
+      <p id="fd-dlead"></p>
+      <div class="acts">
+        <button type="button" class="btn" id="fd-dcancel">Cancel</button>
+        <button type="button" class="btn primary" id="fd-dok">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var root = document.querySelector('.mk-frontend-design');
+  if (!root) return;
+  var $ = function (s) { return root.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
+
+  /* meters: four rising steps plus the number */
+  $$('.meter[data-v]').forEach(function (m) {
+    var v = parseFloat(m.getAttribute('data-v'));
+    var lit = Math.min(4, Math.max(1, Math.floor(v) + 1));
+    var tone = v < 1 ? 'low' : v < 2 ? 'mid' : 'high';
+    if (tone !== 'mid') m.classList.add(tone);
+    m.classList.remove(tone === 'low' ? 'high' : 'low');
+    m.setAttribute('role', 'img');
+    m.setAttribute('aria-label', 'Naturalness ' + v.toFixed(1) + ' of 3');
+    var bars = '';
+    for (var i = 0; i < 4; i++) bars += '<i' + (i < lit ? ' class="on"' : '') + '></i>';
+    m.innerHTML = '<span class="bars" aria-hidden="true">' + bars + '</span><span class="num">' + v.toFixed(1) + '</span>' +
+      (m.hasAttribute('data-of') ? '<span class="of">/ 3</span>' : '');
+  });
+
+  /* tabs */
+  var tabs = $$('.nav-item[data-tab]');
+  var views = $$('.view');
+  function show(id) {
+    tabs.forEach(function (t) { t.setAttribute('aria-selected', String(t.getAttribute('data-tab') === id)); });
+    views.forEach(function (v) { v.hidden = v.getAttribute('data-view') !== id; });
+    if (id === 'today') sweep();
+  }
+  tabs.forEach(function (t) { t.addEventListener('click', function () { show(t.getAttribute('data-tab')); }); });
+  $$('[data-goto]').forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-goto')); }); });
+
+  /* the dial needle sweeps once each time Today opens */
+  var dial = $('#fd-dialwrap');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function sweep() {
+    dial.classList.remove('go');
+    if (reduce) { dial.classList.add('go'); return; }
+    void dial.offsetWidth;
+    window.requestAnimationFrame(function () { dial.classList.add('go'); });
+  }
+  sweep();
+
+  /* theme */
+  var theme = $('#fd-theme');
+  theme.addEventListener('click', function () {
+    var light = root.classList.toggle('light');
+    theme.setAttribute('aria-pressed', String(light));
+    theme.querySelector('span').textContent = light ? 'Day' : 'Night';
+  });
+
+  /* rewrite register switch + copy */
+  var rewrites = {
+    casual: '<ins>Just a reminder:</ins> the release is on Friday.',
+    pro: '<ins>A reminder that</ins> the release is on Friday.'
+  };
+  var regBtns = $$('[data-reg]');
+  var rw = $('#fd-rewrite');
+  var copyBtn = $('#fd-copy');
+  var current = 'casual';
+  regBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      current = b.getAttribute('data-reg');
+      regBtns.forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      rw.innerHTML = rewrites[current];
+    });
+  });
+  var copyTimer;
+  copyBtn.addEventListener('click', function () {
+    try { navigator.clipboard && navigator.clipboard.writeText(rw.textContent); } catch (e) {}
+    copyBtn.querySelector('span').textContent = 'Copied';
+    clearTimeout(copyTimer);
+    copyTimer = setTimeout(function () { copyBtn.querySelector('span').textContent = 'Copy rewrite'; }, 1500);
+  });
+
+  /* filter segment (visual only) */
+  $$('.seg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      $$('.seg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    });
+  });
+
+  /* in-app dialog */
+  var scrim = $('#fd-scrim');
+  var dTitle = $('#fd-dtitle');
+  var dLead = $('#fd-dlead');
+  var dOk = $('#fd-dok');
+  var dCancel = $('#fd-dcancel');
+  var opener = null;
+  var action = null;
+  var DIALOGS = {
+    run: {
+      title: 'Run Cadence now?',
+      lead: 'It reads new Claude Code prompts, screens them and coaches the weakest. This takes about 40 seconds. The 22:00 run still happens tonight.',
+      ok: 'Run now',
+      go: startRun
+    },
+    review: {
+      title: 'Mark this message as reviewed?',
+      lead: 'It leaves your queue. You can still find it under Reviewed.',
+      ok: 'Mark reviewed',
+      go: function () { $('#fd-card').classList.add('is-reviewed'); }
+    }
+  };
+  function openDialog(kind, from) {
+    var d = DIALOGS[kind];
+    opener = from;
+    action = d.go;
+    dTitle.textContent = d.title;
+    dLead.textContent = d.lead;
+    dOk.textContent = d.ok;
+    scrim.hidden = false;
+    dOk.focus();
+  }
+  function closeDialog() {
+    scrim.hidden = true;
+    if (opener && opener.focus) opener.focus();
+  }
+  $$('[data-open-dialog]').forEach(function (b) {
+    b.addEventListener('click', function () { openDialog(b.getAttribute('data-open-dialog'), b); });
+  });
+  dCancel.addEventListener('click', closeDialog);
+  dOk.addEventListener('click', function () { var a = action; closeDialog(); if (a) a(); });
+  scrim.addEventListener('click', function (e) { if (e.target === scrim) closeDialog(); });
+  root.addEventListener('keydown', function (e) {
+    if (scrim.hidden) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeDialog(); return; }
+    if (e.key === 'Tab') {
+      var f = [dCancel, dOk];
+      var i = f.indexOf(document.activeElement);
+      e.preventDefault();
+      f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+    }
+  });
+
+  /* simulated run in the status bar */
+  var runEl = $('#fd-run');
+  var runText = $('#fd-runtext');
+  var runBtn = $('#fd-runbtn');
+  var runIcon = runEl.querySelector('use');
+  function startRun() {
+    var steps = ['Reading messages 0 of 14', 'Screening 6 of 14', 'Coaching 2 of 3'];
+    var i = 0;
+    runBtn.disabled = true;
+    runEl.classList.add('busy');
+    runIcon.setAttribute('href', '#fd-spin');
+    runText.textContent = steps[0];
+    var t = setInterval(function () {
+      i++;
+      if (i < steps.length) { runText.textContent = steps[i]; return; }
+      clearInterval(t);
+      runEl.classList.remove('busy');
+      runIcon.setAttribute('href', '#fd-check');
+      runText.textContent = 'Last run ok, just now';
+      runBtn.disabled = false;
+    }, 1100);
+  }
+
+  /* trend chart */
+  var daily = [1.5, 1.6, 1.4, 1.7, 1.6, 1.8, 1.7, 1.6, 1.9, 1.8, 2.0, 1.8, 1.7, 1.9];
+  var days = ['09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22'];
+  var roll = daily.map(function (_, i) {
+    var s = 0, n = 0;
+    for (var j = Math.max(0, i - 6); j <= i; j++) { s += daily[j]; n++; }
+    return s / n;
+  });
+  var W = 460, H = 210, L = 28, R = 40, T = 14, B = 26, lo = 1, hi = 3;
+  function x(i) { return L + i * (W - L - R) / (daily.length - 1); }
+  function y(v) { return T + (1 - (v - lo) / (hi - lo)) * (H - T - B); }
+  function path(a) { return a.map(function (v, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); }).join(' '); }
+  var svg = '';
+  [1, 1.5, 2, 2.5, 3].forEach(function (v) {
+    svg += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>';
+    if (v % 1 === 0) svg += '<text x="' + (L - 8) + '" y="' + y(v) + '" dy="0.35em" text-anchor="end">' + v + '</text>';
+  });
+  svg += '<line class="goalln" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(2) + '" y2="' + y(2) + '"/>';
+  svg += '<text class="goaltx" x="' + (W - R + 6) + '" y="' + y(2) + '" dy="0.35em">goal</text>';
+  svg += '<path class="daily" d="' + path(daily) + '"/>';
+  daily.forEach(function (v, i) { svg += '<circle class="dot" cx="' + x(i) + '" cy="' + y(v) + '" r="3"><title>' + days[i] + ' Oct: ' + v.toFixed(1) + '</title></circle>'; });
+  svg += '<path class="roll" d="' + path(roll) + '"/>';
+  var last = roll.length - 1;
+  svg += '<text class="endtx" x="' + (x(last) + 8) + '" y="' + y(roll[last]) + '" dy="0.35em">' + roll[last].toFixed(1) + '</text>';
+  [0, 4, 8, 13].forEach(function (i) { svg += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">10-' + days[i] + '</text>'; });
+  $('#fd-chart-svg').innerHTML = svg;
+})();
+</script>
+</body>
+</html>

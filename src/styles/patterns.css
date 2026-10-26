@@ -1,0 +1,230 @@
+/*
+  Patterns and Settings: "Quiet Study" cards on paper.
+  Tokens and shared pieces (.surface, .btn, .muted, .eyebrow) live in cadence.css.
+*/
+
+/* ───────── page frame ───────── */
+.patterns,
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 880px;
+  padding-bottom: 28px;
+}
+
+.pg-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.pg-head h1 { margin: 2px 0 0; font: 500 34px/1.1 var(--serif); letter-spacing: -0.01em; color: var(--ink); }
+.pg-head .sub { margin: 4px 0 0; max-width: 56ch; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+
+.pat-sec { padding: 24px 28px 22px; }
+.pat-sec-head { margin-bottom: 20px; }
+.pat-sec h2 { margin: 0; font: 500 22px/1.2 var(--serif); letter-spacing: -0.005em; color: var(--ink); }
+.pat-sec .lead { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.note { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+/* ───────── issue bars ───────── */
+.bar-list { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.bar-row { display: grid; grid-template-columns: 190px minmax(0, 1fr) 34px 64px; align-items: center; gap: 14px; font-size: 13.5px; }
+.bar-label { color: var(--ink); line-height: 1.3; }
+.bar-track { height: 12px; border-radius: 6px; background: var(--sunken); overflow: hidden; }
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.bar-row.top .bar-fill { background: var(--bad); }
+.bar-num { color: var(--ink); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.bar-avg { color: var(--muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ───────── trend chart ───────── */
+.chart-wrap { position: relative; }
+.chart { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font: 11px var(--sans); font-variant-numeric: tabular-nums; }
+.chart .goal { stroke: var(--good); stroke-width: 1.5; stroke-dasharray: 2 4; stroke-linecap: round; }
+.chart .goal-label { fill: var(--good); font: 600 11px var(--sans); }
+.chart .area-top { stop-color: var(--accent); stop-opacity: 0.2; }
+.chart .area-bottom { stop-color: var(--accent); stop-opacity: 0; }
+.chart .area { fill: url(#pat-area); stroke: none; }
+.chart .line { fill: none; stroke: var(--accent); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+.chart .roll { fill: none; stroke: var(--ink-2); stroke-width: 2; stroke-dasharray: 6 4; stroke-linecap: round; }
+.chart .dot {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+  transition: r var(--med) var(--spring), fill var(--fast) var(--ease);
+}
+.chart .dot.on { r: 5.5px; fill: var(--accent); }
+.chart .cursor { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+.chart .hit { fill: transparent; pointer-events: all; outline: 0; cursor: crosshair; }
+
+.chart-tip-pos {
+  position: absolute;
+  z-index: 2;
+  margin-top: -12px;
+  pointer-events: none;
+  transition: left var(--fast) var(--ease), top var(--fast) var(--ease);
+}
+.chart-tip {
+  display: grid;
+  gap: 1px;
+  padding: 8px 12px 9px;
+  border-radius: var(--r);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+}
+.tip-day { font-size: 11px; letter-spacing: 0.04em; opacity: 0.72; }
+.tip-num { font: 500 22px/1.1 var(--serif); font-variant-numeric: tabular-nums; }
+.tip-meta { font-size: 11px; opacity: 0.72; font-variant-numeric: tabular-nums; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0 0; color: var(--ink-2); font-size: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.key { display: inline-block; width: 24px; height: 0; border-top: 2.25px solid var(--accent); }
+.key-roll { border-top: 2px dashed var(--ink-2); }
+.key-goal { border-top: 2px dotted var(--good); }
+
+/* ───────── does coaching work ───────── */
+.impact-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.impact-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1.1fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.impact-row:first-child { padding-top: 2px; }
+.impact-row:last-child { padding-bottom: 2px; border-bottom: 0; }
+.impact-side { display: flex; flex-direction: column; gap: 7px; min-width: 0; color: var(--ink-2); }
+.impact-line { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.impact-line b { color: var(--ink); font: 500 19px/1 var(--serif); font-variant-numeric: tabular-nums; }
+.impact-line .muted { font-size: 12px; }
+.mini { display: block; height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.mini-fill { display: block; height: 100%; border-radius: 3px; }
+.mini-fill.before { background: var(--line-strong); }
+.mini-fill.after { background: var(--accent); }
+
+.impact-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 130px;
+  justify-content: center;
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.impact-verdict i { font-size: 13px; }
+.impact-verdict.down { background: var(--good-soft); color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); }
+.impact-verdict.up { background: var(--bad-soft); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
+.impact-verdict.same { background: var(--sunken); color: var(--ink-2); border-color: var(--line); }
+.impact-verdict.few { background: var(--mid-soft); color: var(--mid); border-color: color-mix(in srgb, var(--mid) 35%, transparent); }
+
+/* ───────── issues by week ───────── */
+.week-scroll { overflow-x: auto; margin: 0 -4px; padding: 0 4px 4px; }
+.week-grid { display: grid; align-items: center; gap: 6px; min-width: max-content; }
+.week-head { color: var(--muted); font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
+.week-cell {
+  position: relative;
+  display: block;
+  height: 40px;
+  border-radius: 7px;
+  background: var(--sunken);
+  overflow: hidden;
+  transition: transform var(--med) var(--spring), box-shadow var(--med) var(--ease);
+}
+.week-cell:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.week-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
+  border-top: 2px solid var(--accent);
+}
+.week-pct {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────── settings ───────── */
+.settings { max-width: 720px; }
+.settings .fields { padding: 6px 28px; }
+.settings .field {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  grid-template-areas: "label input" "hint input";
+  align-items: center;
+  column-gap: 28px;
+  row-gap: 3px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+.settings .field:last-child { border-bottom: 0; }
+.settings .field label {
+  grid-area: label;
+  align-self: end;
+  color: var(--ink);
+  font: 500 17px/1.25 var(--serif);
+  transition: color var(--fast) var(--ease);
+}
+.settings .field:focus-within label { color: var(--accent); }
+.settings .hint { grid-area: hint; align-self: start; margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.settings .field input {
+  grid-area: input;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 500 18px var(--serif);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease), box-shadow var(--med) var(--ease);
+}
+.settings .field input:hover { border-color: var(--ink-2); }
+.settings .field input:focus,
+.settings .field input:focus-visible {
+  outline: 0;
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: var(--ring), 0 0 22px -4px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.save-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 0 4px; }
+.save-row .btn { min-width: 112px; height: 40px; }
+.save-row .btn.saving:disabled { opacity: 0.85; }
+.save-row .notes { display: inline-flex; align-items: center; min-height: 24px; }
+.ok-note { display: inline-flex; align-items: center; gap: 8px; color: var(--good); font-size: 13px; font-weight: 600; }
+.ok-note svg { width: 22px; height: 22px; flex: none; }
+.ok-note .ring { fill: var(--good-soft); stroke: var(--good); stroke-width: 1.5; }
+.ok-note .tick { fill: none; stroke: var(--good); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.err-note { display: inline-block; color: var(--bad); font-size: 13px; font-weight: 500; line-height: 1.4; }
+
+@media (max-width: 760px) {
+  .bar-row { grid-template-columns: minmax(0, 1fr) 34px 64px; row-gap: 6px; }
+  .bar-row .bar-track { grid-column: 1 / -1; grid-row: 2; }
+  .impact-row { grid-template-columns: 1fr 1fr; }
+  .impact-row .bar-label { grid-column: 1 / -1; }
+  .settings .field { grid-template-columns: 1fr 108px; column-gap: 16px; }
+}

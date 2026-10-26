@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence - mockup: The Proof Desk</title>
+<style>
+body { margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; background: #1d2026; }
+
+/* ------------------------------------------------------------------ tokens */
+.mk-design-taste {
+  --stage: #1d2026;
+  --bg: #0c1118;
+  --bar: #080b11;
+  --s1: #131a25;
+  --s2: #1a2331;
+  --s3: #2a364b;
+  --ink: #eaeef4;
+  --ink2: #a8b3c2;
+  --ink3: #8591a3;
+  --ok: #5ee0b4;
+  --ok-ink: #06241b;
+  --ok-bg: rgba(94, 224, 180, 0.13);
+  --ok-wash: rgba(94, 224, 180, 0.07);
+  --warn: #f0b35b;
+  --warn-bg: rgba(240, 179, 91, 0.14);
+  --low: #f4876c;
+  --hover: rgba(255, 255, 255, 0.05);
+  --scrim: rgba(4, 7, 12, 0.62);
+  --win-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+
+  box-sizing: border-box;
+  flex: none;
+  padding: 32px;
+  background: var(--stage);
+  color: var(--ink);
+  font: 13px/1.45 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+.mk-design-taste[data-theme="light"] {
+  --bg: #eef0f4;
+  --bar: #e3e6ec;
+  --s1: #ffffff;
+  --s2: #f3f5f8;
+  --s3: #d5dbe5;
+  --ink: #111722;
+  --ink2: #475264;
+  --ink3: #5f6b7d;
+  --ok: #0a7a5b;
+  --ok-ink: #ffffff;
+  --ok-bg: rgba(10, 122, 91, 0.12);
+  --ok-wash: rgba(10, 122, 91, 0.06);
+  --warn: #a2620a;
+  --warn-bg: rgba(190, 120, 20, 0.15);
+  --low: #c0441f;
+  --hover: rgba(10, 20, 40, 0.06);
+  --scrim: rgba(20, 28, 42, 0.45);
+  --win-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.mk-design-taste *, .mk-design-taste *::before, .mk-design-taste *::after { box-sizing: border-box; }
+.mk-design-taste [hidden] { display: none !important; }
+.mk-design-taste button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.mk-design-taste h1, .mk-design-taste h2, .mk-design-taste h3, .mk-design-taste p, .mk-design-taste ul, .mk-design-taste ol, .mk-design-taste blockquote { margin: 0; padding: 0; }
+.mk-design-taste ul, .mk-design-taste ol { list-style: none; }
+.mk-design-taste :focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; border-radius: 4px; }
+.mk-design-taste .mk-i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ------------------------------------------------------------------ window */
+.mk-design-taste .mk-window {
+  position: relative;
+  width: 1100px;
+  height: 720px;
+  display: grid;
+  grid-template-columns: 188px 1fr;
+  grid-template-rows: 38px 1fr 32px;
+  background: var(--bg);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--win-shadow);
+}
+.mk-design-taste .mk-titlebar { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; background: var(--bar); padding-left: 14px; user-select: none; }
+.mk-design-taste .mk-brand { display: flex; align-items: center; gap: 9px; font-family: var(--serif); font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
+.mk-design-taste .mk-brand svg { width: 18px; height: 18px; color: var(--ok); }
+.mk-design-taste .mk-tb-right { display: flex; align-items: stretch; height: 100%; }
+.mk-design-taste .mk-theme { width: 40px; display: grid; place-items: center; color: var(--ink2); }
+.mk-design-taste .mk-theme:hover { background: var(--hover); color: var(--ink); }
+.mk-design-taste .mk-winctl { display: flex; }
+.mk-design-taste .mk-winctl button { width: 46px; display: grid; place-items: center; color: var(--ink2); }
+.mk-design-taste .mk-winctl button:hover { background: var(--hover); color: var(--ink); }
+.mk-design-taste .mk-winctl .mk-close:hover { background: #d6362f; color: #fff; }
+.mk-design-taste .mk-winctl svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; }
+
+/* ------------------------------------------------------------------ nav */
+.mk-design-taste .mk-nav { background: var(--bar); padding: 14px 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.mk-design-taste .mk-nav-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: 8px; color: var(--ink2); font-weight: 500; text-align: left; transition: background 0.15s, color 0.15s; }
+.mk-design-taste .mk-nav-item:hover { background: var(--hover); color: var(--ink); }
+.mk-design-taste .mk-nav-item[aria-current="page"] { background: var(--s2); color: var(--ink); }
+.mk-design-taste .mk-nav-item[aria-current="page"] .mk-i { color: var(--ok); }
+.mk-design-taste .mk-count { margin-left: auto; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-size: 12px; font-weight: 600; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.mk-design-taste .mk-nav-foot { margin-top: auto; padding: 10px; color: var(--ink3); font-size: 12px; line-height: 1.5; }
+.mk-design-taste .mk-nav-foot p { display: flex; align-items: center; gap: 7px; }
+.mk-design-taste .mk-nav-foot svg { width: 13px; height: 13px; color: var(--ok); }
+
+/* ------------------------------------------------------------------ main */
+.mk-design-taste .mk-main { position: relative; overflow: hidden; background: var(--bg); border-top-left-radius: 12px; }
+.mk-design-taste .mk-view { height: 100%; overflow-y: auto; padding: 22px 28px 26px; animation: mk-in 0.28s ease both; scrollbar-width: thin; scrollbar-color: var(--s3) transparent; }
+@keyframes mk-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.mk-design-taste .mk-view-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.mk-design-taste .mk-date { color: var(--ink3); font-size: 12.5px; margin-bottom: 2px; }
+.mk-design-taste h1 { font-family: var(--serif); font-size: 28px; line-height: 1.1; font-weight: 600; letter-spacing: -0.01em; }
+.mk-design-taste .mk-sub { color: var(--ink2); font-size: 13px; }
+.mk-design-taste h2 { font-size: 12.5px; font-weight: 600; color: var(--ink2); line-height: 1.3; }
+.mk-design-taste .mk-card { background: var(--s1); border-radius: 12px; padding: 16px 18px; }
+
+/* meter: bars + number, always together */
+.mk-design-taste .mk-meter { display: inline-flex; align-items: center; gap: 8px; }
+.mk-design-taste .mk-bars { display: inline-flex; gap: 3px; align-items: flex-end; }
+.mk-design-taste .mk-bars i { width: 5px; height: 14px; border-radius: 2px; background: var(--s3); }
+.mk-design-taste .mk-bars i:nth-child(1) { height: 8px; }
+.mk-design-taste .mk-bars i:nth-child(2) { height: 10px; }
+.mk-design-taste .mk-bars i:nth-child(3) { height: 12px; }
+.mk-design-taste .mk-bars i:nth-child(4) { height: 14px; }
+.mk-design-taste .mk-meter .mk-num { font-weight: 650; font-variant-numeric: tabular-nums lining-nums; min-width: 2ch; }
+.mk-design-taste .mk-meter.mk-low .mk-bars i.mk-on { background: var(--low); }
+.mk-design-taste .mk-meter.mk-mid .mk-bars i.mk-on { background: var(--warn); }
+.mk-design-taste .mk-meter.mk-high .mk-bars i.mk-on { background: var(--ok); }
+.mk-design-taste .mk-meter.mk-md { gap: 10px; }
+.mk-design-taste .mk-meter.mk-md .mk-num { font-size: 20px; font-family: var(--serif); }
+.mk-design-taste .mk-meter.mk-md .mk-bars i { width: 7px; }
+.mk-design-taste .mk-meter.mk-lg .mk-bars { gap: 5px; }
+.mk-design-taste .mk-meter.mk-lg .mk-bars i { width: 12px; border-radius: 3px; }
+.mk-design-taste .mk-meter.mk-lg .mk-bars i:nth-child(1) { height: 16px; }
+.mk-design-taste .mk-meter.mk-lg .mk-bars i:nth-child(2) { height: 22px; }
+.mk-design-taste .mk-meter.mk-lg .mk-bars i:nth-child(3) { height: 28px; }
+.mk-design-taste .mk-meter.mk-lg .mk-bars i:nth-child(4) { height: 34px; }
+
+.mk-design-taste .mk-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px; background: var(--s2); color: var(--ink2); font-size: 12px; white-space: nowrap; }
+.mk-design-taste .mk-chip.mk-ok { background: var(--ok-bg); color: var(--ok); }
+
+/* marked words: wavy amber = was off, solid mint = fixed */
+.mk-design-taste mark { color: inherit; border-radius: 3px; padding: 0 2px; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
+.mk-design-taste mark.mk-bad { background: var(--warn-bg); text-decoration: underline wavy var(--warn); }
+.mk-design-taste mark.mk-fix { background: var(--ok-bg); text-decoration: underline solid var(--ok); }
+
+/* buttons */
+.mk-design-taste .mk-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 32px; padding: 0 14px; border-radius: 8px; font-weight: 600; background: var(--s2); color: var(--ink); transition: background 0.15s, transform 0.1s; white-space: nowrap; }
+.mk-design-taste .mk-btn:hover { background: var(--s3); }
+.mk-design-taste .mk-btn:active { transform: translateY(1px); }
+.mk-design-taste .mk-btn.mk-primary { background: var(--ok); color: var(--ok-ink); }
+.mk-design-taste .mk-btn.mk-primary:hover { filter: brightness(1.08); }
+.mk-design-taste .mk-btn.mk-ghost { background: transparent; color: var(--ink2); font-weight: 500; }
+.mk-design-taste .mk-btn.mk-ghost:hover { background: var(--hover); color: var(--ink); }
+.mk-design-taste .mk-btn.mk-sm { height: 28px; padding: 0 11px; font-size: 12.5px; }
+.mk-design-taste .mk-btn:disabled { opacity: 0.55; cursor: default; }
+
+.mk-design-taste .mk-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px; background: var(--s2); }
+.mk-design-taste .mk-seg button { height: 26px; padding: 0 12px; border-radius: 6px; color: var(--ink2); font-weight: 500; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; }
+.mk-design-taste .mk-seg button:hover { color: var(--ink); }
+.mk-design-taste .mk-seg button[aria-pressed="true"] { background: var(--s3); color: var(--ink); }
+.mk-design-taste .mk-seg .mk-seg-n { color: var(--ink3); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ today */
+.mk-design-taste .mk-summary { display: grid; grid-template-columns: 1.05fr 1.5fr 1fr; gap: 12px; }
+.mk-design-taste .mk-score .mk-bignum { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 2px; }
+.mk-design-taste .mk-score .mk-n { font-family: var(--serif); font-size: 62px; line-height: 1; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: lining-nums tabular-nums; }
+.mk-design-taste .mk-score .mk-of { color: var(--ink3); font-size: 13px; }
+.mk-design-taste .mk-score .mk-meter { margin: 6px 0 8px; }
+.mk-design-taste .mk-score p { color: var(--ink2); font-size: 12.5px; }
+.mk-design-taste .mk-trend svg { width: 100%; height: auto; display: block; margin-top: 6px; overflow: visible; }
+.mk-design-taste .mk-trend .mk-cap { color: var(--ink3); font-size: 12px; margin-top: 4px; }
+.mk-design-taste .mk-chart-line { fill: none; stroke: var(--ok); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.mk-design-taste .mk-chart-roll { fill: none; stroke: var(--ink2); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.mk-design-taste .mk-chart-goal { stroke: var(--warn); stroke-width: 1.25; stroke-dasharray: 1.5 4; stroke-linecap: round; }
+.mk-design-taste .mk-chart-grid { stroke: var(--s2); stroke-width: 1; }
+.mk-design-taste .mk-chart-dot { fill: var(--s1); stroke: var(--ok); stroke-width: 1.75; }
+.mk-design-taste .mk-chart-dot.mk-last { fill: var(--ok); }
+.mk-design-taste .mk-chart-axis { fill: var(--ink3); font-size: 10.5px; font-family: var(--sans); }
+.mk-design-taste .mk-chart-label { fill: var(--ink); font-size: 12px; font-weight: 650; font-family: var(--sans); }
+.mk-design-taste .mk-chart-goal-label { fill: var(--warn); font-size: 10.5px; font-family: var(--sans); }
+.mk-design-taste .mk-next { display: flex; flex-direction: column; }
+.mk-design-taste .mk-clock { font-family: var(--serif); font-size: 46px; line-height: 1; font-weight: 600; letter-spacing: -0.02em; margin: 8px 0 4px; font-variant-numeric: lining-nums tabular-nums; }
+.mk-design-taste .mk-next .mk-in { color: var(--ok); font-weight: 600; font-size: 12.5px; }
+.mk-design-taste .mk-next .mk-what { color: var(--ink2); font-size: 12.5px; margin: 6px 0 10px; }
+.mk-design-taste .mk-next .mk-btn { margin-top: auto; align-self: flex-start; }
+
+.mk-design-taste .mk-queue { margin-top: 20px; }
+.mk-design-taste .mk-queue-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.mk-design-taste .mk-queue-head h2 { font-size: 15px; color: var(--ink); font-family: var(--serif); font-weight: 600; }
+.mk-design-taste .mk-queue-head span { color: var(--ink3); font-size: 12.5px; }
+.mk-design-taste .mk-q { display: flex; flex-direction: column; gap: 6px; }
+.mk-design-taste .mk-qrow { display: grid; grid-template-columns: 62px 1fr 150px; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--s1); border-radius: 12px; padding: 12px 14px; transition: background 0.15s; }
+.mk-design-taste .mk-qrow:hover { background: var(--s2); }
+.mk-design-taste .mk-qscore { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.mk-design-taste .mk-qscore .mk-big { font-family: var(--serif); font-size: 26px; line-height: 1; font-weight: 600; font-variant-numeric: lining-nums tabular-nums; }
+.mk-design-taste .mk-qtext { display: grid; grid-template-columns: 44px 1fr; row-gap: 3px; align-items: baseline; min-width: 0; }
+.mk-design-taste .mk-tag { font-size: 11.5px; color: var(--ink3); }
+.mk-design-taste .mk-tag.mk-t-fix { color: var(--ok); font-weight: 600; }
+.mk-design-taste .mk-better { font-family: var(--serif); font-size: 16px; line-height: 1.35; color: var(--ink); }
+.mk-design-taste .mk-yours { font-family: var(--serif); font-size: 13.5px; line-height: 1.35; color: var(--ink2); }
+.mk-design-taste .mk-qside { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.mk-design-taste .mk-qmore { margin-top: 8px; }
+
+/* ------------------------------------------------------------------ messages */
+.mk-design-taste .mk-view.mk-split { display: grid; grid-template-rows: auto 1fr; overflow: hidden; padding-bottom: 0; }
+.mk-design-taste .mk-body { display: grid; grid-template-columns: 322px 1fr; gap: 14px; min-height: 0; padding-bottom: 20px; }
+.mk-design-taste .mk-rows { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0; padding-right: 4px; scrollbar-width: thin; scrollbar-color: var(--s3) transparent; }
+.mk-design-taste .mk-row { display: block; width: 100%; text-align: left; padding: 11px 12px; border-radius: 10px; background: transparent; transition: background 0.15s; }
+.mk-design-taste .mk-row:hover { background: var(--hover); }
+.mk-design-taste .mk-row[aria-current="true"] { background: var(--s1); box-shadow: inset 3px 0 0 var(--ok); }
+.mk-design-taste .mk-row-text { font-family: var(--serif); font-size: 14px; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mk-design-taste .mk-row-meta { display: flex; align-items: center; gap: 8px; margin-top: 7px; color: var(--ink3); font-size: 12px; flex-wrap: wrap; }
+.mk-design-taste .mk-row-meta .mk-chip { height: 20px; font-size: 11.5px; }
+
+.mk-design-taste .mk-detail { background: var(--s1); border-radius: 14px; overflow-y: auto; min-height: 0; padding: 18px 22px 22px; scrollbar-width: thin; scrollbar-color: var(--s3) transparent; }
+.mk-design-taste .mk-d-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--ink3); font-size: 12.5px; }
+.mk-design-taste .mk-hero { margin-top: 14px; padding: 18px 20px 16px; border-radius: 14px; background: var(--ok-wash); box-shadow: inset 0 0 0 1px var(--ok-bg); }
+.mk-design-taste .mk-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mk-design-taste .mk-hero-top h2 { color: var(--ok); font-size: 13px; }
+.mk-design-taste .mk-hero-text { font-family: var(--serif); font-size: 26px; line-height: 1.3; letter-spacing: -0.005em; margin: 12px 0 16px; color: var(--ink); text-wrap: pretty; }
+.mk-design-taste .mk-hero-text mark { padding: 1px 4px; }
+.mk-design-taste .mk-hero-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mk-design-taste .mk-key { color: var(--ink3); font-size: 12px; margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.mk-design-taste .mk-key mark { font-size: 11.5px; }
+.mk-design-taste .mk-orig { margin-top: 16px; padding: 0 4px; }
+.mk-design-taste .mk-orig-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.mk-design-taste .mk-orig blockquote { font-family: var(--serif); font-size: 16.5px; line-height: 1.45; color: var(--ink2); }
+.mk-design-taste .mk-two { display: grid; grid-template-columns: 1.25fr 1fr; gap: 12px; margin-top: 18px; }
+.mk-design-taste .mk-two p { margin-top: 5px; color: var(--ink); line-height: 1.55; }
+.mk-design-taste .mk-remember { background: var(--s2); border-radius: 12px; padding: 12px 14px; display: flex; gap: 10px; }
+.mk-design-taste .mk-remember svg { color: var(--warn); margin-top: 2px; }
+.mk-design-taste .mk-remember strong { font-size: 12.5px; color: var(--warn); }
+.mk-design-taste .mk-remember p { margin-top: 3px; font-family: var(--serif); font-size: 14px; line-height: 1.45; }
+.mk-design-taste .mk-attempt { margin-top: 18px; }
+.mk-design-taste .mk-attempt label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink2); margin-bottom: 6px; }
+.mk-design-taste .mk-attempt textarea { width: 100%; min-height: 62px; resize: none; border: 0; border-radius: 10px; background: var(--s2); color: var(--ink); font: 15px/1.45 var(--serif); padding: 10px 12px; }
+.mk-design-taste .mk-attempt textarea::placeholder { color: var(--ink3); }
+.mk-design-taste .mk-attempt textarea:focus-visible { outline: 2px solid var(--ok); outline-offset: 0; }
+.mk-design-taste .mk-d-foot { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.mk-design-taste .mk-d-foot .mk-spacer { flex: 1; }
+
+/* ------------------------------------------------------------------ patterns */
+.mk-design-taste .mk-pat { display: grid; grid-template-columns: 1.08fr 1fr; gap: 14px; align-items: start; }
+.mk-design-taste .mk-pat-col { display: flex; flex-direction: column; gap: 14px; }
+.mk-design-taste .mk-pat h2.mk-h { font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.mk-design-taste .mk-pat .mk-hint { color: var(--ink3); font-size: 12.5px; margin-bottom: 12px; }
+.mk-design-taste .mk-issue { padding: 12px 0; }
+.mk-design-taste .mk-issue + .mk-issue { box-shadow: 0 -1px 0 var(--s2); }
+.mk-design-taste .mk-issue-top { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+.mk-design-taste .mk-issue-name { font-weight: 600; font-size: 13.5px; }
+.mk-design-taste .mk-issue-count { font-variant-numeric: tabular-nums; color: var(--ink2); font-size: 12.5px; }
+.mk-design-taste .mk-issue-count b { color: var(--ink); font-size: 15px; font-weight: 650; }
+.mk-design-taste .mk-track { height: 8px; border-radius: 4px; background: var(--s2); margin: 7px 0 8px; overflow: hidden; }
+.mk-design-taste .mk-fill { display: block; height: 100%; border-radius: 4px; background: var(--warn); transform-origin: left; animation: mk-grow 0.6s ease both; }
+@keyframes mk-grow { from { transform: scaleX(0); } to { transform: none; } }
+.mk-design-taste .mk-issue-bot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mk-design-taste .mk-fixline { font-family: var(--serif); font-size: 14px; color: var(--ink2); }
+.mk-design-taste .mk-fixline mark { padding: 0 3px; }
+.mk-design-taste .mk-fixline .mk-times { color: var(--ink3); font-family: var(--sans); font-size: 12px; margin-left: 6px; }
+.mk-design-taste .mk-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink2); font-size: 12px; margin-top: 8px; }
+.mk-design-taste .mk-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.mk-design-taste .mk-legend i { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--ok); }
+.mk-design-taste .mk-legend i.mk-k-roll { border-top: 2px dashed var(--ink2); }
+.mk-design-taste .mk-legend i.mk-k-goal { border-top: 2px dotted var(--warn); }
+.mk-design-taste .mk-bigchart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.mk-design-taste .mk-impact { display: grid; grid-template-columns: 1.15fr 0.7fr 0.7fr auto; gap: 12px 12px; align-items: center; }
+.mk-design-taste .mk-impact-h { color: var(--ink3); font-size: 12px; }
+.mk-design-taste .mk-impact .mk-name { font-weight: 600; font-size: 13px; }
+.mk-design-taste .mk-side b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.mk-design-taste .mk-side small { display: block; color: var(--ink3); font-size: 11.5px; line-height: 1.2; }
+.mk-design-taste .mk-verdict { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 11px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--s2); color: var(--ink2); }
+.mk-design-taste .mk-verdict.mk-down { background: var(--ok-bg); color: var(--ok); }
+.mk-design-taste .mk-note { color: var(--ink3); font-size: 12px; margin-top: 12px; }
+
+/* ------------------------------------------------------------------ status bar */
+.mk-design-taste .mk-status { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 0 12px 0 16px; background: var(--bar); color: var(--ink2); font-size: 12px; }
+.mk-design-taste .mk-status b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+.mk-design-taste .mk-status .mk-sep { width: 1px; height: 14px; background: var(--s3); }
+.mk-design-taste .mk-run { display: inline-flex; align-items: center; gap: 6px; }
+.mk-design-taste .mk-run svg { width: 14px; height: 14px; color: var(--ok); }
+.mk-design-taste .mk-run .mk-spin { animation: mk-spin 0.9s linear infinite; }
+@keyframes mk-spin { to { transform: rotate(360deg); } }
+.mk-design-taste .mk-next-s { margin-left: auto; }
+.mk-design-taste .mk-status .mk-btn { height: 24px; padding: 0 9px; font-size: 12px; }
+
+/* ------------------------------------------------------------------ dialog */
+.mk-design-taste .mk-scrim { position: absolute; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 20; animation: mk-fade 0.18s ease both; }
+@keyframes mk-fade { from { opacity: 0; } to { opacity: 1; } }
+.mk-design-taste .mk-dlg { width: 430px; background: var(--s1); border-radius: 16px; padding: 22px 22px 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--s3); animation: mk-pop 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1) both; }
+@keyframes mk-pop { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+.mk-design-taste .mk-dlg-h { display: flex; gap: 14px; }
+.mk-design-taste .mk-dlg-ico { width: 38px; height: 38px; border-radius: 19px; background: var(--ok-bg); color: var(--ok); display: grid; place-items: center; flex: none; }
+.mk-design-taste .mk-dlg-ico svg { width: 18px; height: 18px; }
+.mk-design-taste .mk-dlg h2 { font-family: var(--serif); font-size: 19px; line-height: 1.25; font-weight: 600; color: var(--ink); }
+.mk-design-taste .mk-dlg p { color: var(--ink2); margin-top: 6px; line-height: 1.55; font-size: 13.5px; }
+.mk-design-taste .mk-dlg-f { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-design-taste .mk-view, .mk-design-taste .mk-fill, .mk-design-taste .mk-scrim, .mk-design-taste .mk-dlg, .mk-design-taste .mk-run .mk-spin { animation: none; }
+  .mk-design-taste .mk-btn, .mk-design-taste .mk-nav-item, .mk-design-taste .mk-row, .mk-design-taste .mk-qrow { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="mk-design-taste" data-theme="dark">
+  <div class="mk-window" role="application" aria-label="Cadence">
+
+    <header class="mk-titlebar">
+      <div class="mk-brand">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15.5 7.6 3h2.8L12 15.5z"/><path d="M9 12.5 12.6 5"/><path d="M4.5 15.5h9"/></svg>
+        Cadence
+      </div>
+      <div class="mk-tb-right">
+        <button type="button" class="mk-theme" data-theme-toggle aria-label="Switch to light theme" title="Switch theme">
+          <svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.5 9.5A5 5 0 0 1 6.5 3.5a5 5 0 1 0 6 6z"/></svg>
+        </button>
+        <div class="mk-winctl">
+          <button type="button" aria-label="Minimize"><svg viewBox="0 0 10 10"><path d="M0 5h10"/></svg></button>
+          <button type="button" aria-label="Maximize"><svg viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9"/></svg></button>
+          <button type="button" class="mk-close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10"/></svg></button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="mk-nav" aria-label="Views">
+      <button type="button" class="mk-nav-item" data-view="today" aria-current="page">
+        <svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 9.5h3.2l.8 1.8h4l.8-1.8H14M2 9.5 3.8 3h8.4L14 9.5V13H2z"/></svg>
+        Today<span class="mk-count" aria-label="8 queued">8</span>
+      </button>
+      <button type="button" class="mk-nav-item" data-view="messages">
+        <svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4H14M5.5 8H14M5.5 12H14M2 4h.01M2 8h.01M2 12h.01"/></svg>
+        All messages
+      </button>
+      <button type="button" class="mk-nav-item" data-view="patterns">
+        <svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13V3M2 13h12M4.5 10l3-3.5 2.5 2L13 4.5"/></svg>
+        Patterns
+      </button>
+      <div class="mk-nav-foot">
+        <p><svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>TypeSafe key set</p>
+        <p><svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>Claude CLI found</p>
+      </div>
+    </nav>
+
+    <main class="mk-main">
+
+      <!-- ============================== TODAY ============================== -->
+      <section class="mk-view" data-panel="today" aria-label="Today">
+        <div class="mk-view-head">
+          <div>
+            <p class="mk-date">Thursday, 22 October</p>
+            <h1>Today</h1>
+          </div>
+        </div>
+
+        <div class="mk-summary">
+          <section class="mk-card mk-score" aria-label="Today's naturalness">
+            <h2>Today's naturalness</h2>
+            <div class="mk-bignum"><span class="mk-n">1.8</span><span class="mk-of">out of 3</span></div>
+            <span data-meter="1.8" data-size="lg"></span>
+            <p>7 messages screened. 0.2 under your goal of 2.0.</p>
+          </section>
+          <section class="mk-card mk-trend" aria-label="Last 14 days">
+            <h2>Last 14 days</h2>
+            <svg data-spark viewBox="0 0 330 120" role="img" aria-label="Daily average naturalness for the last 14 days, rising from 1.2 to 1.8 (axis starts at 1.0). Goal is 2.0."></svg>
+            <p class="mk-cap">Daily average, up 0.6 since 9 October.</p>
+          </section>
+          <section class="mk-card mk-next" aria-label="Next run">
+            <h2>Next run</h2>
+            <div class="mk-clock">22:00</div>
+            <p class="mk-in">in 3 h 12 min</p>
+            <p class="mk-what">Reads new prompts, screens them, coaches the 3 worst.</p>
+            <button type="button" class="mk-btn" data-open-run><svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true" style="fill:currentColor;stroke:none"><path d="M5 3.5v9l7-4.5z"/></svg>Run now</button>
+          </section>
+        </div>
+
+        <section class="mk-queue" aria-label="Worst messages first">
+          <div class="mk-queue-head">
+            <h2>Start with the worst</h2>
+            <span>8 waiting, lowest naturalness first</span>
+          </div>
+          <ul class="mk-q" data-queue></ul>
+          <button type="button" class="mk-btn mk-ghost mk-qmore" data-goto="messages">4 more in the queue<svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
+        </section>
+      </section>
+
+      <!-- ============================== MESSAGES ============================== -->
+      <section class="mk-view mk-split" data-panel="messages" aria-label="All messages" hidden>
+        <div class="mk-view-head">
+          <div>
+            <p class="mk-date">12 work messages from 3 projects</p>
+            <h1>All messages</h1>
+          </div>
+          <div class="mk-seg" role="group" aria-label="Show">
+            <button type="button" aria-pressed="true">Queue <span class="mk-seg-n">8</span></button>
+            <button type="button" aria-pressed="false">Reviewed <span class="mk-seg-n">1</span></button>
+            <button type="button" aria-pressed="false">All <span class="mk-seg-n">12</span></button>
+          </div>
+        </div>
+        <div class="mk-body">
+          <ul class="mk-rows" data-rows aria-label="Queued messages"></ul>
+          <article class="mk-detail" data-detail aria-label="Message"></article>
+        </div>
+      </section>
+
+      <!-- ============================== PATTERNS ============================== -->
+      <section class="mk-view" data-panel="patterns" aria-label="Patterns" hidden>
+        <div class="mk-view-head">
+          <div>
+            <p class="mk-date">Last 12 weeks, 412 messages screened</p>
+            <h1>Patterns</h1>
+          </div>
+          <p class="mk-sub">67 flagged. 16% of what you write needs work.</p>
+        </div>
+        <div class="mk-pat">
+          <div class="mk-pat-col">
+            <section class="mk-card" aria-label="Recurring mistakes">
+              <h2 class="mk-h">What keeps coming back</h2>
+              <p class="mk-hint">Ranked by how often each one was flagged, with the fix you have seen most.</p>
+              <ol data-issues></ol>
+            </section>
+          </div>
+          <div class="mk-pat-col">
+            <section class="mk-card mk-bigchart" aria-label="Naturalness over time">
+              <h2 class="mk-h">Naturalness over time</h2>
+              <p class="mk-hint">Daily average on the 0 to 3 scale. Higher is more natural.</p>
+              <svg data-bigchart viewBox="0 0 440 196" role="img" aria-label="Daily average naturalness over 21 days, with a 7-day rolling average and a goal of 2.0. The latest 7-day average is 1.6."></svg>
+              <div class="mk-legend">
+                <span><i></i>Daily average</span>
+                <span><i class="mk-k-roll"></i>7-day average</span>
+                <span><i class="mk-k-goal"></i>Goal 2.0</span>
+              </div>
+            </section>
+            <section class="mk-card" aria-label="Coached issues">
+              <h2 class="mk-h">Does coaching help?</h2>
+              <p class="mk-hint">How often an issue is flagged before and after you first practised it.</p>
+              <div class="mk-impact" data-impact></div>
+              <p class="mk-note">A before and after comparison, not proof of cause.</p>
+            </section>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="mk-status" aria-live="polite">
+      <span><b>8</b> queued</span>
+      <span><b>1</b> reviewed</span>
+      <span><b>2</b> pending</span>
+      <span class="mk-sep" aria-hidden="true"></span>
+      <span class="mk-run" data-run-state>
+        <svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>
+        <span data-run-text>Last run ok, yesterday 22:00</span>
+      </span>
+      <span class="mk-next-s">Next run Thu, 22:00</span>
+      <button type="button" class="mk-btn mk-ghost" data-open-run><svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true" style="width:12px;height:12px;fill:currentColor;stroke:none"><path d="M5 3.5v9l7-4.5z"/></svg>Run now</button>
+    </footer>
+
+    <!-- in-app confirmation dialog (no native alert/confirm/prompt) -->
+    <div class="mk-scrim" data-scrim hidden>
+      <div class="mk-dlg" role="dialog" aria-modal="true" aria-labelledby="mk-dlg-title" aria-describedby="mk-dlg-lead">
+        <div class="mk-dlg-h">
+          <span class="mk-dlg-ico"><svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 2.5v2.5h-2.5"/></svg></span>
+          <div>
+            <h2 id="mk-dlg-title" data-dlg-title></h2>
+            <p id="mk-dlg-lead" data-dlg-lead></p>
+          </div>
+        </div>
+        <div class="mk-dlg-f">
+          <button type="button" class="mk-btn mk-ghost" data-dlg-cancel>Cancel</button>
+          <button type="button" class="mk-btn mk-primary" data-dlg-ok data-first></button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  var root = document.querySelector('.mk-design-taste');
+  if (!root) return;
+  var $ = function (s, c) { return (c || root).querySelector(s); };
+  var $$ = function (s, c) { return Array.prototype.slice.call((c || root).querySelectorAll(s)); };
+
+  var ISSUE = {
+    none: 'Sounds native', grammar: 'Grammar', preposition_collocation: 'Preposition or word pairing',
+    word_choice: 'Word choice', word_order: 'Word order', pt_calque: 'Portuguese-style phrasing', register: 'Tone for a work chat'
+  };
+
+  /* Bracketed words become marks: [x] -> wavy amber in the original, solid mint in a rewrite. */
+  function marked(text, cls) { return text.replace(/\[(.+?)\]/g, '<mark class="' + cls + '">$1</mark>'); }
+  function plain(text) { return text.replace(/[\[\]]/g, ''); }
+
+  function meter(v, size) {
+    var lit = Math.min(4, Math.max(1, Math.floor(v) + 1));
+    var tone = v < 1 ? 'low' : v < 2 ? 'mid' : 'high';
+    var bars = '';
+    for (var i = 0; i < 4; i++) bars += '<i' + (i < lit ? ' class="mk-on"' : '') + '></i>';
+    return '<span class="mk-meter mk-' + tone + (size ? ' mk-' + size : '') + '" role="img" aria-label="Naturalness ' + v.toFixed(1) + ' of 3">' +
+      '<span class="mk-bars" aria-hidden="true">' + bars + '</span><span class="mk-num">' + v.toFixed(1) + '</span></span>';
+  }
+  $$('[data-meter]').forEach(function (el) { el.outerHTML = meter(parseFloat(el.getAttribute('data-meter')), el.getAttribute('data-size')); });
+
+  /* ------------------------------------------------ sample data (modelled on mockBackend.ts) */
+  var MSGS = [
+    { id: 'deploy', v: 0.8, issue: 'grammar', project: 'web-app', ago: '5 hours ago',
+      orig: 'Please [to check] the deploy when you have time.',
+      casual: '[Could you check] the deploy when you have [a moment]?',
+      pro: '[Could you check] the deploy when you have time?',
+      why: "'Please' goes straight before the verb, without 'to'. 'Could you' also sounds smoother in a chat.",
+      tip: "Use 'please + verb' or 'could you + verb', with no 'to' in between.",
+      attempt: 'Please check the deploy when you get a moment.' },
+    { id: 'release', v: 1.1, issue: 'pt_calque', project: 'web-app', ago: '1 day ago',
+      orig: 'I am [remembering you] that the release is on Friday.',
+      casual: '[Just a reminder:] the release is on Friday.',
+      pro: 'A [reminder] that the release is on Friday.',
+      why: "'Remember someone of something' is Portuguese word order carried into English. In English you remind someone.",
+      tip: "Say 'remind you that', not 'remember you that'." },
+    { id: 'report', v: 1.2, issue: 'preposition_collocation', project: 'billing-api', ago: '2 hours ago',
+      orig: 'I will send you the report [until] the end of the day.',
+      casual: "[I'll] send you the report [by] the end of the day.",
+      pro: 'I will send you the report [by] the end of the day.',
+      why: "'Until' sets a limit you reach and then stop at, but here you mean a deadline. English pairs 'by' with a deadline.",
+      tip: 'Deadlines take ‘by’: by the end of the day, by Friday, by noon.' },
+    { id: 'tests', v: 1.3, issue: 'word_order', project: 'billing-api', ago: '1 day ago',
+      orig: '[The thing is that] the tests [they are] failing again in [the CI].',
+      casual: 'The tests are failing again [in CI].',
+      pro: 'The tests are failing again in the [CI pipeline].',
+      why: "The subject comes before the verb, and 'the thing is that' adds nothing. Start with the point.",
+      tip: "Start with the subject: 'The tests are failing', not 'The thing is that the tests they are failing'." },
+    { id: 'proposal', v: 1.4, issue: 'grammar', project: 'web-app', ago: '9 hours ago',
+      orig: 'I [am agree] with the proposal, let’s go ahead.',
+      casual: 'I [agree] with the proposal, let’s go ahead.',
+      pro: 'I [agree] with the proposal. [Let’s go ahead.]',
+      why: "'Agree' is a verb in English, so it takes no 'am'. The slip usually comes from Portuguese 'estou de acordo'.",
+      tip: "Say 'I agree', not 'I am agree'. Same for 'I understand', not 'I am understand'." },
+    { id: 'migration', v: 1.6, issue: 'grammar', project: 'billing-api', ago: '20 hours ago',
+      orig: '[Yesterday I have made] the migration and it worked well.',
+      casual: 'I [ran] the migration yesterday and it worked well.',
+      pro: 'I [ran] the migration yesterday, and it [went through without issues].',
+      why: "A finished action with a time word such as 'yesterday' takes the simple past, not the present perfect.",
+      tip: "Yesterday, last week, in 2024: simple past. 'Have done' is for things that still matter now." },
+    { id: 'asap', v: 1.8, issue: 'register', project: 'ops', ago: '1 day ago',
+      orig: 'Hey [dude], can you check it [asap]?',
+      casual: 'Hey, can you check this [when you get a chance]?',
+      pro: '[Could you] check this [when you have a moment]?',
+      why: "Chat is informal, but 'dude' and 'asap' read as too casual when you work with clients or managers.",
+      tip: "Swap 'asap' for 'when you get a chance' or 'today if possible'." },
+    { id: 'pr', v: 1.9, issue: 'word_choice', project: 'ops', ago: '14 hours ago',
+      orig: 'Can you [give a look at] the PR when you [can]?',
+      casual: 'Can you [take a look at] the PR when you [get a chance]?',
+      pro: '[Could you review] the PR when you get a chance?',
+      why: "'Give a look' is a literal translation. English says 'take a look' for a quick glance, or 'review' for a real check.",
+      tip: "'Take a look' for a quick glance, 'review' for a proper check." }
+  ];
+  var byId = {}; MSGS.forEach(function (m) { byId[m.id] = m; });
+
+  /* ------------------------------------------------ screens */
+  var panels = $$('[data-panel]');
+  var navItems = $$('[data-view]');
+  function show(name) {
+    panels.forEach(function (p) { p.hidden = p.getAttribute('data-panel') !== name; });
+    navItems.forEach(function (b) {
+      if (b.getAttribute('data-view') === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+  }
+  navItems.forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-view')); }); });
+  $$('[data-goto]').forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-goto')); }); });
+
+  /* ------------------------------------------------ today: queue */
+  var q = $('[data-queue]');
+  q.innerHTML = MSGS.slice(0, 4).map(function (m) {
+    return '<li><button type="button" class="mk-qrow" data-open="' + m.id + '">' +
+      '<span class="mk-qscore"><span class="mk-big">' + m.v.toFixed(1) + '</span>' + meterBarsOnly(m.v) + '</span>' +
+      '<span class="mk-qtext">' +
+        '<span class="mk-tag mk-t-fix">Better</span><span class="mk-better">' + marked(m.casual, 'mk-fix') + '</span>' +
+        '<span class="mk-tag">Yours</span><span class="mk-yours">' + marked(m.orig, 'mk-bad') + '</span>' +
+      '</span>' +
+      '<span class="mk-qside"><span class="mk-chip">' + ISSUE[m.issue] + '</span><span class="mk-btn mk-sm">Practise</span></span>' +
+      '</button></li>';
+  }).join('');
+  function meterBarsOnly(v) {
+    var lit = Math.min(4, Math.max(1, Math.floor(v) + 1));
+    var tone = v < 1 ? 'low' : v < 2 ? 'mid' : 'high';
+    var bars = '';
+    for (var i = 0; i < 4; i++) bars += '<i' + (i < lit ? ' class="mk-on"' : '') + '></i>';
+    return '<span class="mk-meter mk-' + tone + '" aria-hidden="true"><span class="mk-bars">' + bars + '</span></span>';
+  }
+  q.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-open]');
+    if (!b) return;
+    select(b.getAttribute('data-open'));
+    show('messages');
+  });
+
+  /* ------------------------------------------------ today: sparkline */
+  var DAILY = [1.1, 1.3, 1.0, 1.4, 1.2, 1.5, 1.3, 1.2, 1.4, 1.3, 1.6, 1.5, 1.7, 1.4, 1.8, 1.6, 1.9, 1.7, 2.0, 1.7, 1.8];
+  var DAYS = ['10-02','10-03','10-04','10-05','10-06','10-07','10-08','10-09','10-10','10-11','10-12','10-13','10-14','10-15','10-16','10-17','10-18','10-19','10-20','10-21','10-22'];
+
+  function path(pts) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' '); }
+
+  (function spark() {
+    var svg = $('[data-spark]');
+    var data = DAILY.slice(-14);
+    var W = 330, H = 120, l = 6, r = 34, t = 16, b = 12, lo = 1.0, hi = 2.3;
+    var x = function (i) { return l + i * (W - l - r) / (data.length - 1); };
+    var y = function (v) { return t + (1 - (v - lo) / (hi - lo)) * (H - t - b); };
+    var out = '<line class="mk-chart-grid" x1="' + l + '" x2="' + (W - r) + '" y1="' + y(1) + '" y2="' + y(1) + '"/>';
+    out += '<text class="mk-chart-axis" x="' + l + '" y="' + (y(1) - 5) + '">1.0</text>';
+    out += '<line class="mk-chart-goal" x1="' + l + '" x2="' + (W - r) + '" y1="' + y(2) + '" y2="' + y(2) + '"/>';
+    out += '<text class="mk-chart-goal-label" x="' + l + '" y="' + (y(2) - 6) + '">goal 2.0</text>';
+    out += '<path class="mk-chart-line" d="' + path(data.map(function (v, i) { return [x(i), y(v)]; })) + '"/>';
+    var li = data.length - 1;
+    out += '<circle class="mk-chart-dot mk-last" cx="' + x(li) + '" cy="' + y(data[li]) + '" r="4"/>';
+    out += '<text class="mk-chart-label" x="' + (x(li) + 10) + '" y="' + (y(data[li]) + 4) + '">' + data[li].toFixed(1) + '</text>';
+    svg.innerHTML = out;
+  })();
+
+  /* ------------------------------------------------ messages */
+  var rows = $('[data-rows]');
+  var detail = $('[data-detail]');
+  var current = 'report';
+  var register = 'casual';
+  var coaching = false;
+
+  rows.innerHTML = MSGS.map(function (m) {
+    return '<li><button type="button" class="mk-row" data-id="' + m.id + '">' +
+      '<span class="mk-row-text">' + plain(m.orig) + '</span>' +
+      '<span class="mk-row-meta">' + meter(m.v) + '<span class="mk-chip">' + ISSUE[m.issue] + '</span><span>' + m.ago + '</span></span>' +
+      '</button></li>';
+  }).join('');
+  rows.addEventListener('click', function (e) {
+    var b = e.target.closest('.mk-row');
+    if (b) select(b.getAttribute('data-id'));
+  });
+
+  var ICON_COPY = '<svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 5.5h7v8h-7zM3.5 10.5v-8h7"/></svg>';
+  var ICON_CHECK = '<svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+  var ICON_BULB = '<svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2a4 4 0 0 0-2.2 7.3c.4.3.7.8.7 1.3v.4h3v-.4c0-.5.3-1 .7-1.3A4 4 0 0 0 8 2zM6.5 13.5h3"/></svg>';
+  var ICON_REDO = '<svg class="mk-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 2.5v2.5h-2.5"/></svg>';
+
+  function renderDetail() {
+    var m = byId[current];
+    var text = register === 'casual' ? m.casual : m.pro;
+    detail.innerHTML =
+      '<header class="mk-d-head"><span>' + m.project + ' · sent ' + m.ago + '</span><span class="mk-chip">' + ISSUE[m.issue] + '</span></header>' +
+      '<section class="mk-hero" aria-label="Suggested rewrite">' +
+        '<div class="mk-hero-top"><h2>Say it like this</h2>' +
+          '<div class="mk-seg" role="group" aria-label="Register">' +
+            '<button type="button" data-reg="casual" aria-pressed="' + (register === 'casual') + '">Casual</button>' +
+            '<button type="button" data-reg="professional" aria-pressed="' + (register === 'professional') + '">Professional</button>' +
+          '</div></div>' +
+        '<p class="mk-hero-text">' + marked(text, 'mk-fix') + '</p>' +
+        '<div class="mk-hero-actions">' +
+          '<button type="button" class="mk-btn mk-primary" data-copy>' + ICON_COPY + '<span>Copy rewrite</span></button>' +
+          '<span class="mk-key"><span><mark class="mk-fix">solid</mark> changed</span><span><mark class="mk-bad">wavy</mark> was off</span></span>' +
+        '</div>' +
+      '</section>' +
+      '<section class="mk-orig" aria-label="What you wrote">' +
+        '<div class="mk-orig-top"><h2>You wrote</h2>' + meter(m.v, 'md') + '</div>' +
+        '<blockquote>' + marked(m.orig, 'mk-bad') + '</blockquote>' +
+      '</section>' +
+      '<div class="mk-two">' +
+        '<section><h2>What was off</h2><p>' + m.why + '</p></section>' +
+        '<aside class="mk-remember">' + ICON_BULB + '<div><strong>Remember</strong><p>' + m.tip + '</p></div></aside>' +
+      '</div>' +
+      '<section class="mk-attempt"><label for="mk-draft">Your version' + (m.attempt ? ', saved' : '') + '</label>' +
+        '<textarea id="mk-draft" rows="2" placeholder="Write the message the way you would say it">' + (m.attempt || '') + '</textarea></section>' +
+      '<div class="mk-d-foot">' +
+        '<button type="button" class="mk-btn" data-coach' + (coaching ? ' disabled' : '') + '>' + ICON_REDO + '<span>' + (coaching ? 'Coaching…' : 'Coach again') + '</span></button>' +
+        '<span class="mk-spacer"></span>' +
+        '<button type="button" class="mk-btn mk-ghost" data-review>' + ICON_CHECK + '<span>Mark reviewed</span></button>' +
+      '</div>';
+  }
+
+  function select(id) {
+    current = id; register = 'casual'; coaching = false;
+    $$('.mk-row', rows).forEach(function (r) {
+      if (r.getAttribute('data-id') === id) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current');
+    });
+    renderDetail();
+    detail.scrollTop = 0;
+  }
+
+  detail.addEventListener('click', function (e) {
+    var reg = e.target.closest('[data-reg]');
+    if (reg) { register = reg.getAttribute('data-reg'); renderDetail(); return; }
+    if (e.target.closest('[data-copy]')) {
+      var btn = e.target.closest('[data-copy]');
+      var m = byId[current];
+      var t = plain(register === 'casual' ? m.casual : m.pro);
+      try { if (navigator.clipboard) navigator.clipboard.writeText(t); } catch (err) {}
+      btn.querySelector('span').textContent = 'Copied';
+      setTimeout(function () { var s = btn.querySelector('span'); if (s) s.textContent = 'Copy rewrite'; }, 1500);
+      return;
+    }
+    if (e.target.closest('[data-coach]')) {
+      openDialog({
+        title: 'Coach this message again?',
+        lead: 'The new suggestions replace the saved ones. If the call fails, the current coaching stays.',
+        ok: 'Coach again',
+        onOk: function () {
+          coaching = true; renderDetail();
+          setTimeout(function () { coaching = false; renderDetail(); }, 1400);
+        }
+      });
+      return;
+    }
+    if (e.target.closest('[data-review]')) {
+      var rb = e.target.closest('[data-review]');
+      rb.querySelector('span').textContent = 'Reviewed just now';
+      rb.disabled = true;
+    }
+  });
+
+  /* ------------------------------------------------ patterns */
+  var ISSUES = [
+    { k: 'grammar', n: 23, avg: 1.3, a: 'am agree', b: 'agree', times: 9 },
+    { k: 'preposition_collocation', n: 14, avg: 1.5, a: 'until', b: 'by', times: 6, ctx: 'a deadline' },
+    { k: 'word_choice', n: 11, avg: 1.8, a: 'give a look', b: 'take a look', times: 5 },
+    { k: 'pt_calque', n: 9, avg: 1.2, a: 'remember you', b: 'remind you', times: 4 },
+    { k: 'word_order', n: 6, avg: 1.4, a: 'the thing is that', b: 'start with the point', times: 3 },
+    { k: 'register', n: 4, avg: 1.8, a: 'asap', b: 'when you get a chance', times: 3 }
+  ];
+  var maxN = ISSUES[0].n;
+  $('[data-issues]').innerHTML = ISSUES.map(function (r) {
+    return '<li class="mk-issue">' +
+      '<div class="mk-issue-top"><span class="mk-issue-name">' + ISSUE[r.k] + '</span>' +
+        '<span class="mk-issue-count"><b>' + r.n + '</b> flagged</span></div>' +
+      '<div class="mk-track" aria-hidden="true"><span class="mk-fill" style="width:' + Math.round(r.n / maxN * 100) + '%"></span></div>' +
+      '<div class="mk-issue-bot"><span class="mk-fixline"><mark class="mk-bad">' + r.a + '</mark> → <mark class="mk-fix">' + r.b + '</mark><span class="mk-times">' + r.times + ' times</span></span>' +
+        meter(r.avg) + '</div></li>';
+  }).join('');
+
+  (function bigChart() {
+    var svg = $('[data-bigchart]');
+    var W = 440, H = 196, l = 26, r = 14, t = 10, b = 24;
+    var x = function (i) { return l + i * (W - l - r) / (DAILY.length - 1); };
+    var y = function (v) { return t + (1 - v / 3) * (H - t - b); };
+    var roll = DAILY.map(function (_, i) {
+      var from = Math.max(0, i - 6), s = 0;
+      for (var j = from; j <= i; j++) s += DAILY[j];
+      return s / (i - from + 1);
+    });
+    var out = '';
+    [0, 1, 2, 3].forEach(function (v) {
+      out += '<line class="mk-chart-grid" x1="' + l + '" x2="' + (W - r) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>';
+      out += '<text class="mk-chart-axis" x="' + (l - 8) + '" y="' + (y(v) + 3.5) + '" text-anchor="end">' + v + '</text>';
+    });
+    out += '<line class="mk-chart-goal" x1="' + l + '" x2="' + (W - r) + '" y1="' + y(2) + '" y2="' + y(2) + '"/>';
+    out += '<path class="mk-chart-roll" d="' + path(roll.map(function (v, i) { return [x(i), y(v)]; })) + '"/>';
+    out += '<path class="mk-chart-line" d="' + path(DAILY.map(function (v, i) { return [x(i), y(v)]; })) + '"/>';
+    DAILY.forEach(function (v, i) {
+      var last = i === DAILY.length - 1;
+      out += '<circle class="mk-chart-dot' + (last ? ' mk-last' : '') + '" cx="' + x(i) + '" cy="' + y(v) + '" r="' + (last ? 4 : 2.75) + '"><title>' + DAYS[i] + ': ' + v.toFixed(1) + '</title></circle>';
+      if (i % 4 === 0 || last) out += '<text class="mk-chart-axis" x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + DAYS[i] + '</text>';
+    });
+    var li = DAILY.length - 1;
+    out += '<text class="mk-chart-label" x="' + (x(li) - 8) + '" y="' + (y(DAILY[li]) - 10) + '" text-anchor="end">' + DAILY[li].toFixed(1) + '</text>';
+    svg.innerHTML = out;
+  })();
+
+  var IMPACT = [
+    { k: 'preposition_collocation', bf: 9, bs: 29, af: 6, as: 35 },
+    { k: 'grammar', bf: 10, bs: 37, af: 14, as: 54 },
+    { k: 'pt_calque', bf: 2, bs: 4, af: 0, as: 3 }
+  ];
+  var imp = '<span class="mk-impact-h">Issue</span><span class="mk-impact-h">Before</span><span class="mk-impact-h">After</span><span class="mk-impact-h">Verdict</span>';
+  IMPACT.forEach(function (c) {
+    var enough = c.bs >= 5 && c.as >= 5;
+    var br = c.bf / c.bs, ar = c.af / c.as;
+    var verdict = !enough ? 'Not enough data yet' : Math.abs(ar - br) < 0.02 ? 'No change' : ar < br ? 'Down' : 'Up';
+    var arrow = verdict === 'Down' ? '↓ ' : verdict === 'Up' ? '↑ ' : '';
+    imp += '<span class="mk-name">' + ISSUE[c.k] + '</span>' +
+      '<span class="mk-side"><b>' + Math.round(br * 100) + '%</b><small>' + c.bf + ' of ' + c.bs + '</small></span>' +
+      '<span class="mk-side"><b>' + (c.as ? Math.round(ar * 100) + '%' : 'n/a') + '</b><small>' + c.af + ' of ' + c.as + '</small></span>' +
+      '<span class="mk-verdict' + (verdict === 'Down' ? ' mk-down' : '') + '">' + arrow + verdict + '</span>';
+  });
+  $('[data-impact]').innerHTML = imp;
+
+  /* ------------------------------------------------ dialog (in-app, never native) */
+  var scrim = $('[data-scrim]');
+  var dlgTitle = $('[data-dlg-title]');
+  var dlgLead = $('[data-dlg-lead]');
+  var dlgOk = $('[data-dlg-ok]');
+  var dlgCancel = $('[data-dlg-cancel]');
+  var returnFocus = null;
+  var onOk = null;
+
+  function openDialog(cfg) {
+    returnFocus = document.activeElement;
+    dlgTitle.textContent = cfg.title;
+    dlgLead.textContent = cfg.lead;
+    dlgOk.textContent = cfg.ok;
+    onOk = cfg.onOk;
+    scrim.hidden = false;
+    dlgOk.focus();
+  }
+  function closeDialog() {
+    scrim.hidden = true;
+    onOk = null;
+    if (returnFocus && returnFocus.isConnected && returnFocus.focus) returnFocus.focus();
+  }
+  dlgCancel.addEventListener('click', closeDialog);
+  dlgOk.addEventListener('click', function () { var f = onOk; closeDialog(); if (f) f(); });
+  scrim.addEventListener('mousedown', function (e) { if (e.target === scrim) closeDialog(); });
+  root.addEventListener('keydown', function (e) {
+    if (scrim.hidden) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeDialog(); }
+    else if (e.key === 'Tab') {
+      e.preventDefault();
+      (document.activeElement === dlgOk ? dlgCancel : dlgOk).focus();
+    }
+  });
+
+  /* run now: confirm, then a short simulated run in the status bar */
+  var runText = $('[data-run-text]');
+  var runIcon = $('[data-run-state] svg');
+  var CHECK_PATH = 'M3 8.5l3.2 3L13 4.5';
+  var SPIN_PATH = 'M8 2.5a5.5 5.5 0 1 0 5.5 5.5';
+  function simulateRun() {
+    var steps = ['Reading messages', 'Screening 1 of 2', 'Screening 2 of 2', 'Coaching 1 of 3', 'Coaching 3 of 3'];
+    runIcon.setAttribute('class', 'mk-i mk-spin');
+    runIcon.querySelector('path').setAttribute('d', SPIN_PATH);
+    var i = 0;
+    runText.textContent = steps[0];
+    var timer = setInterval(function () {
+      i++;
+      if (i < steps.length) { runText.textContent = steps[i]; return; }
+      clearInterval(timer);
+      runIcon.setAttribute('class', 'mk-i');
+      runIcon.querySelector('path').setAttribute('d', CHECK_PATH);
+      runText.textContent = 'Last run ok, just now';
+    }, 650);
+  }
+  $$('[data-open-run]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      openDialog({
+        title: 'Run Cadence now?',
+        lead: 'It will read new prompts, screen them and coach the 3 worst. This usually takes about a minute, and tonight’s 22:00 run still happens.',
+        ok: 'Run now',
+        onOk: simulateRun
+      });
+    });
+  });
+
+  /* ------------------------------------------------ theme */
+  var tbtn = $('[data-theme-toggle]');
+  var MOON = 'M12.5 9.5A5 5 0 0 1 6.5 3.5a5 5 0 1 0 6 6z';
+  var SUN = 'M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M12.6 3.4l-1 1M4.4 11.6l-1 1';
+  tbtn.addEventListener('click', function () {
+    var light = root.getAttribute('data-theme') !== 'light';
+    root.setAttribute('data-theme', light ? 'light' : 'dark');
+    tbtn.setAttribute('aria-label', light ? 'Switch to dark theme' : 'Switch to light theme');
+    tbtn.querySelector('path').setAttribute('d', light ? SUN : MOON);
+  });
+
+  /* ------------------------------------------------ start */
+  select('report');
+})();
+</script>
+</body>
+</html>

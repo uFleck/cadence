@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence mockup - ui-ux-pro-max (Quiet Study)</title>
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#d8d4ca;padding:16px;box-sizing:border-box}
+
+/* ===== Personality: "Quiet Study" - warm paper, ink, amber + teal. Editorial serif for the words being coached. =====
+   Style: soft minimalism / editorial (calm, trustworthy, readable). Fonts: Newsreader (headings, rewrites) + Roboto (UI),
+   both named only; falling back to system stacks (no web font is loaded). */
+.mk-ui-ux-pro-max{
+  --paper:#f4efe4; --surface:#fffdf8; --surface-2:#faf6ec; --sunken:#ece5d6;
+  --ink:#2a2622; --ink-2:#4a443c; --muted:#6a6358; --line:#ddd4c2; --line-strong:#c9bea6;
+  --accent:#a8480a; --accent-ink:#ffffff; --accent-soft:#f8e6d2;
+  --good:#0b6b5c; --good-soft:#dcefe9; --good-ink:#074a40;
+  --mid:#8a5a00; --mid-soft:#f6e8c4;
+  --bad:#b3261e; --bad-soft:#f9dedb;
+  --scrim:rgba(24,20,14,.55); --shadow:0 18px 50px rgba(40,30,10,.28);
+  --serif:Newsreader,"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  --sans:Roboto,"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --r:10px; --ease:cubic-bezier(.2,.7,.2,1);
+  position:relative; width:1100px; max-width:100%; height:720px; box-sizing:border-box;
+  display:grid; grid-template-columns:200px 1fr; grid-template-rows:38px 1fr 34px;
+  background:var(--paper); color:var(--ink); font:14px/1.5 var(--sans);
+  border:1px solid var(--line-strong); border-radius:12px; overflow:hidden; box-shadow:var(--shadow);
+  font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased;
+}
+.mk-ui-ux-pro-max.mk-dark{
+  --paper:#171512; --surface:#211e19; --surface-2:#1c1a16; --sunken:#2b2721;
+  --ink:#f0e9db; --ink-2:#d3cab9; --muted:#a69d8c; --line:#37322a; --line-strong:#4b4437;
+  --accent:#f0a95b; --accent-ink:#1d1308; --accent-soft:#3a2a17;
+  --good:#5fd0b5; --good-soft:#15332d; --good-ink:#a8ecda;
+  --mid:#e9b84f; --mid-soft:#3a2f14;
+  --bad:#f59a8e; --bad-soft:#3d1f1b;
+  --scrim:rgba(0,0,0,.62);
+}
+.mk-ui-ux-pro-max *,.mk-ui-ux-pro-max *::before,.mk-ui-ux-pro-max *::after{box-sizing:border-box}
+.mk-ui-ux-pro-max button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+.mk-ui-ux-pro-max button:disabled{cursor:not-allowed;opacity:.5}
+.mk-ui-ux-pro-max h1,.mk-ui-ux-pro-max h2,.mk-ui-ux-pro-max h3,.mk-ui-ux-pro-max p,.mk-ui-ux-pro-max ul,.mk-ui-ux-pro-max ol,.mk-ui-ux-pro-max blockquote{margin:0;padding:0}
+.mk-ui-ux-pro-max ul,.mk-ui-ux-pro-max ol{list-style:none}
+.mk-ui-ux-pro-max svg{display:block;flex:none}
+.mk-ui-ux-pro-max :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.mk-ui-ux-pro-max .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Title bar */
+.mk-ui-ux-pro-max .titlebar{grid-column:1/3;display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);border-bottom:1px solid var(--line);padding-left:14px;user-select:none}
+.mk-ui-ux-pro-max .brand{display:flex;align-items:center;gap:8px;font:600 15px/1 var(--serif);letter-spacing:.01em}
+.mk-ui-ux-pro-max .brand svg{color:var(--accent)}
+.mk-ui-ux-pro-max .tb-right{display:flex;align-items:stretch;height:100%}
+.mk-ui-ux-pro-max .theme{display:flex;align-items:center;gap:6px;background:none;border:0;padding:0 12px;color:var(--ink-2);font-size:12px;transition:background .15s}
+.mk-ui-ux-pro-max .theme:hover{background:var(--sunken)}
+.mk-ui-ux-pro-max .winctl{display:flex}
+.mk-ui-ux-pro-max .winctl button{width:46px;height:100%;display:grid;place-items:center;background:none;border:0;color:var(--ink-2);transition:background .15s,color .15s}
+.mk-ui-ux-pro-max .winctl button:hover{background:var(--sunken)}
+.mk-ui-ux-pro-max .winctl .close:hover{background:#c42b1c;color:#fff}
+
+/* Nav */
+.mk-ui-ux-pro-max .nav{background:var(--surface-2);border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:4px}
+.mk-ui-ux-pro-max .nav-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:2px 10px 8px}
+.mk-ui-ux-pro-max .nav-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:var(--r);background:none;color:var(--ink-2);text-align:left;position:relative;transition:background .15s,color .15s}
+.mk-ui-ux-pro-max .nav-item:hover{background:var(--sunken);color:var(--ink)}
+.mk-ui-ux-pro-max .nav-item[aria-current="page"]{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:inset 0 0 0 1px var(--line)}
+.mk-ui-ux-pro-max .nav-item[aria-current="page"]::before{content:"";position:absolute;left:-10px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.mk-ui-ux-pro-max .nav-item .badge{margin-left:auto;font-size:12px;font-weight:500;min-width:22px;text-align:center;padding:1px 7px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.mk-ui-ux-pro-max .nav-foot{margin-top:auto;padding:12px;border:1px dashed var(--line-strong);border-radius:var(--r);font-size:12px;color:var(--muted);line-height:1.45}
+.mk-ui-ux-pro-max .nav-foot b{display:block;color:var(--ink-2);font-weight:500;margin-bottom:2px}
+
+/* Main */
+.mk-ui-ux-pro-max .main{overflow:auto;padding:22px 26px 26px;min-height:0}
+.mk-ui-ux-pro-max .main[hidden],.mk-ui-ux-pro-max [hidden]{display:none!important}
+.mk-ui-ux-pro-max .eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mk-ui-ux-pro-max .h1{font:500 28px/1.15 var(--serif);margin:2px 0 4px}
+.mk-ui-ux-pro-max .sub{color:var(--muted);max-width:60ch}
+.mk-ui-ux-pro-max .h2{font:600 17px/1.25 var(--serif);margin-bottom:10px}
+.mk-ui-ux-pro-max .muted{color:var(--muted)}
+.mk-ui-ux-pro-max .num{font-variant-numeric:tabular-nums}
+
+/* Buttons */
+.mk-ui-ux-pro-max .btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:var(--r);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font-weight:500;transition:background .15s,border-color .15s,transform .12s}
+.mk-ui-ux-pro-max .btn:hover{background:var(--sunken)}
+.mk-ui-ux-pro-max .btn:active{transform:scale(.98)}
+.mk-ui-ux-pro-max .btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mk-ui-ux-pro-max .btn-primary:hover{background:var(--accent);filter:brightness(.92)}
+.mk-ui-ux-pro-max .btn-sm{min-height:32px;padding:0 12px;font-size:13px}
+.mk-ui-ux-pro-max .ib{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--r);border:1px solid var(--line-strong);background:var(--surface);transition:background .15s}
+.mk-ui-ux-pro-max .ib:hover{background:var(--sunken)}
+
+/* Meter: bars + ALWAYS a number + a word. Colour is never the only signal. */
+.mk-ui-ux-pro-max .meter{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.mk-ui-ux-pro-max .meter .bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px}
+.mk-ui-ux-pro-max .meter .bars i{width:4px;border-radius:1px;background:var(--line-strong);display:block}
+.mk-ui-ux-pro-max .meter .bars i:nth-child(1){height:5px}
+.mk-ui-ux-pro-max .meter .bars i:nth-child(2){height:8px}
+.mk-ui-ux-pro-max .meter .bars i:nth-child(3){height:11px}
+.mk-ui-ux-pro-max .meter .bars i:nth-child(4){height:14px}
+.mk-ui-ux-pro-max .meter .n{font-weight:600;min-width:2.2ch;font-size:14px}
+.mk-ui-ux-pro-max .meter .w{font-size:12px;color:var(--muted)}
+.mk-ui-ux-pro-max .meter.low .bars i.on{background:var(--bad)}
+.mk-ui-ux-pro-max .meter.mid .bars i.on{background:var(--mid)}
+.mk-ui-ux-pro-max .meter.high .bars i.on{background:var(--good)}
+.mk-ui-ux-pro-max .meter.low .n{color:var(--bad)}
+.mk-ui-ux-pro-max .meter.mid .n{color:var(--mid)}
+.mk-ui-ux-pro-max .meter.high .n{color:var(--good)}
+.mk-ui-ux-pro-max .chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 9px;border-radius:99px;background:var(--sunken);color:var(--ink-2);border:1px solid var(--line);white-space:nowrap}
+.mk-ui-ux-pro-max .chip.ok{background:var(--good-soft);color:var(--good-ink);border-color:transparent}
+
+/* Today */
+.mk-ui-ux-pro-max .hero-row{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin:18px 0 22px}
+.mk-ui-ux-pro-max .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.mk-ui-ux-pro-max .score-top{display:flex;align-items:flex-end;gap:18px}
+.mk-ui-ux-pro-max .score-big{font:500 64px/0.9 var(--serif);letter-spacing:-.02em}
+.mk-ui-ux-pro-max .score-big small{font:400 18px var(--sans);color:var(--muted);letter-spacing:0;margin-left:4px}
+.mk-ui-ux-pro-max .score-meta{padding-bottom:4px;display:flex;flex-direction:column;gap:6px}
+.mk-ui-ux-pro-max .delta{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:500;color:var(--good-ink);background:var(--good-soft);border-radius:99px;padding:2px 10px;width:max-content}
+.mk-ui-ux-pro-max .spark{margin-top:14px;width:100%;height:74px}
+.mk-ui-ux-pro-max .spark .goal{stroke:var(--muted);stroke-dasharray:2 4;stroke-width:1}
+.mk-ui-ux-pro-max .spark .ln{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.mk-ui-ux-pro-max .spark .dt{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+.mk-ui-ux-pro-max .spark text{font-size:10px;fill:var(--muted)}
+.mk-ui-ux-pro-max .next{display:flex;flex-direction:column;gap:12px;background:var(--accent-soft);border-color:transparent}
+.mk-ui-ux-pro-max .next .time{font:500 34px/1 var(--serif);display:flex;align-items:center;gap:10px}
+.mk-ui-ux-pro-max .next .time svg{color:var(--accent)}
+.mk-ui-ux-pro-max .next p{color:var(--ink-2)}
+.mk-ui-ux-pro-max .next .btn{margin-top:auto;align-self:flex-start}
+.mk-ui-ux-pro-max .stats{display:flex;gap:18px;margin-top:2px;font-size:13px;color:var(--ink-2)}
+.mk-ui-ux-pro-max .stats b{font-size:15px;color:var(--ink)}
+.mk-ui-ux-pro-max .q-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.mk-ui-ux-pro-max .q-list{display:flex;flex-direction:column;gap:8px}
+.mk-ui-ux-pro-max .q-item{display:grid;grid-template-columns:28px 1fr auto;gap:12px;align-items:start;width:100%;text-align:left;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);transition:border-color .15s,background .15s,transform .15s var(--ease)}
+.mk-ui-ux-pro-max .q-item:hover{border-color:var(--accent);transform:translateX(2px)}
+.mk-ui-ux-pro-max .rank{width:28px;height:28px;border-radius:50%;background:var(--sunken);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--ink-2)}
+.mk-ui-ux-pro-max .q-orig{color:var(--muted);font-size:13px;text-decoration:line-through;text-decoration-color:var(--line-strong)}
+.mk-ui-ux-pro-max .q-new{font:500 16px/1.4 var(--serif);color:var(--good-ink);margin-top:2px;display:flex;gap:6px;align-items:baseline}
+.mk-ui-ux-pro-max .q-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+
+/* Messages */
+.mk-ui-ux-pro-max .msgs{display:grid;grid-template-columns:318px 1fr;gap:18px;align-items:start}
+.mk-ui-ux-pro-max .seg{display:inline-flex;padding:3px;background:var(--sunken);border-radius:12px;gap:2px}
+.mk-ui-ux-pro-max .seg button{min-height:38px;padding:0 14px;border:0;border-radius:9px;background:none;color:var(--ink-2);font-size:13px;font-weight:500;transition:background .15s}
+.mk-ui-ux-pro-max .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.mk-ui-ux-pro-max .rows{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.mk-ui-ux-pro-max .row{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);transition:border-color .15s,background .15s}
+.mk-ui-ux-pro-max .row:hover{border-color:var(--line-strong);background:var(--surface-2)}
+.mk-ui-ux-pro-max .row.active{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.mk-ui-ux-pro-max .row-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;color:var(--ink-2);margin-bottom:6px}
+.mk-ui-ux-pro-max .row-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.mk-ui-ux-pro-max .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 22px;position:sticky;top:0}
+.mk-ui-ux-pro-max .card-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;font-size:12px;color:var(--muted)}
+.mk-ui-ux-pro-max .rw{background:var(--good-soft);border-radius:14px;padding:16px 18px 14px;border:1px solid transparent}
+.mk-ui-ux-pro-max .rw-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px}
+.mk-ui-ux-pro-max .rw-label{display:flex;align-items:center;gap:6px;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--good-ink);font-weight:600}
+.mk-ui-ux-pro-max .rw .seg{background:rgba(0,0,0,.07)}
+.mk-ui-ux-pro-max .rw .seg button{min-height:32px;font-size:12px;padding:0 12px}
+.mk-ui-ux-pro-max .rw-text{font:500 24px/1.32 var(--serif);color:var(--ink);margin:4px 0 12px;min-height:2.64em}
+.mk-ui-ux-pro-max .rw-actions{display:flex;align-items:center;gap:10px}
+.mk-ui-ux-pro-max .rw-actions .after{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--good-ink)}
+.mk-ui-ux-pro-max .orig{margin-top:14px;padding:2px 0 2px 14px;border-left:3px solid var(--line-strong)}
+.mk-ui-ux-pro-max .orig .cap{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:2px}
+.mk-ui-ux-pro-max .orig .t{font:400 15px/1.5 var(--serif);color:var(--ink-2)}
+.mk-ui-ux-pro-max .orig mark{background:var(--bad-soft);color:inherit;border-radius:3px;padding:0 2px;text-decoration:underline wavy var(--bad);text-underline-offset:3px;text-decoration-thickness:1px}
+.mk-ui-ux-pro-max .why{margin-top:14px}
+.mk-ui-ux-pro-max .why h3{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px}
+.mk-ui-ux-pro-max .why p{color:var(--ink-2);max-width:62ch}
+.mk-ui-ux-pro-max .remember{display:flex;gap:10px;margin-top:14px;padding:11px 14px;background:var(--accent-soft);border-radius:12px;color:var(--ink)}
+.mk-ui-ux-pro-max .remember svg{color:var(--accent);margin-top:2px}
+.mk-ui-ux-pro-max .remember b{font-weight:600}
+.mk-ui-ux-pro-max .card-f{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.mk-ui-ux-pro-max .empty{padding:30px;text-align:center;color:var(--muted)}
+
+/* Patterns */
+.mk-ui-ux-pro-max .pat{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+.mk-ui-ux-pro-max .pat .wide{grid-column:1/3}
+.mk-ui-ux-pro-max .bar-list{display:flex;flex-direction:column;gap:10px}
+.mk-ui-ux-pro-max .bar-row{display:grid;grid-template-columns:150px 1fr 28px 52px;align-items:center;gap:10px;font-size:13px}
+.mk-ui-ux-pro-max .bar-track{height:12px;border-radius:6px;background:var(--sunken);overflow:hidden}
+.mk-ui-ux-pro-max .bar-fill{display:block;height:100%;border-radius:6px;background:var(--accent);transition:width .5s var(--ease)}
+.mk-ui-ux-pro-max .bar-row:first-child .bar-fill{background:var(--bad)}
+.mk-ui-ux-pro-max .bar-n{font-weight:600;text-align:right}
+.mk-ui-ux-pro-max .bar-avg{color:var(--muted);font-size:12px;text-align:right}
+.mk-ui-ux-pro-max .chart{width:100%;height:auto}
+.mk-ui-ux-pro-max .chart .grid{stroke:var(--line);stroke-width:1}
+.mk-ui-ux-pro-max .chart .goal{stroke:var(--good);stroke-width:1.5;stroke-dasharray:2 4}
+.mk-ui-ux-pro-max .chart .daily{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round}
+.mk-ui-ux-pro-max .chart .roll{fill:none;stroke:var(--ink-2);stroke-width:2;stroke-dasharray:6 4}
+.mk-ui-ux-pro-max .chart .dot{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+.mk-ui-ux-pro-max .chart text{font-size:11px;fill:var(--muted)}
+.mk-ui-ux-pro-max .chart .gl{fill:var(--good-ink);font-weight:600}
+.mk-ui-ux-pro-max .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.mk-ui-ux-pro-max .legend span{display:inline-flex;align-items:center;gap:6px}
+.mk-ui-ux-pro-max .key{width:22px;height:0;border-top:2px solid var(--accent)}
+.mk-ui-ux-pro-max .key.roll{border-top:2px dashed var(--ink-2)}
+.mk-ui-ux-pro-max .key.goal{border-top:2px dotted var(--good)}
+.mk-ui-ux-pro-max .impact{display:flex;flex-direction:column}
+.mk-ui-ux-pro-max .impact li{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.mk-ui-ux-pro-max .impact li:last-child{border-bottom:0}
+.mk-ui-ux-pro-max .impact .ba{color:var(--muted);display:flex;align-items:center;gap:6px}
+.mk-ui-ux-pro-max .impact .ba b{color:var(--ink);font-size:15px}
+.mk-ui-ux-pro-max .verdict{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.mk-ui-ux-pro-max .verdict.down{background:var(--good-soft);color:var(--good-ink)}
+.mk-ui-ux-pro-max .verdict.same{background:var(--sunken);color:var(--ink-2)}
+.mk-ui-ux-pro-max .verdict.few{background:var(--mid-soft);color:var(--mid)}
+.mk-ui-ux-pro-max .tips li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+.mk-ui-ux-pro-max .tips li:last-child{border-bottom:0}
+.mk-ui-ux-pro-max .tips svg{color:var(--accent);margin-top:2px}
+.mk-ui-ux-pro-max .tips b{color:var(--ink);font-weight:500}
+
+/* Status bar */
+.mk-ui-ux-pro-max .status{grid-column:1/3;display:flex;align-items:center;gap:16px;padding:0 10px 0 16px;background:var(--surface-2);border-top:1px solid var(--line);font-size:12px;color:var(--ink-2)}
+.mk-ui-ux-pro-max .status b{color:var(--ink);font-weight:600}
+.mk-ui-ux-pro-max .status .sep{width:1px;height:14px;background:var(--line-strong)}
+.mk-ui-ux-pro-max .status .run{display:inline-flex;align-items:center;gap:6px}
+.mk-ui-ux-pro-max .status .run svg{color:var(--good)}
+.mk-ui-ux-pro-max .status .grow{margin-left:auto}
+.mk-ui-ux-pro-max .status .btn{min-height:26px;padding:0 10px;font-size:12px;border-radius:7px}
+.mk-ui-ux-pro-max .spin{animation:mk-ui-ux-pro-max-spin 1s linear infinite}
+@keyframes mk-ui-ux-pro-max-spin{to{transform:rotate(360deg)}}
+
+/* In-app dialog (never native) */
+.mk-ui-ux-pro-max .dlg-scrim{position:absolute;inset:0;z-index:100;background:var(--scrim);display:grid;place-items:center;animation:mk-ui-ux-pro-max-fade .18s ease-out}
+.mk-ui-ux-pro-max .dlg{width:440px;max-width:calc(100% - 40px);background:var(--surface);border:1px solid var(--line-strong);border-radius:16px;box-shadow:var(--shadow);padding:22px;animation:mk-ui-ux-pro-max-pop .22s var(--ease)}
+.mk-ui-ux-pro-max .dlg-h{display:flex;gap:14px}
+.mk-ui-ux-pro-max .dlg-ico{flex:none;width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.mk-ui-ux-pro-max .dlg h2{font:600 19px/1.25 var(--serif);margin-bottom:4px}
+.mk-ui-ux-pro-max .dlg p{color:var(--ink-2)}
+.mk-ui-ux-pro-max .dlg ul{margin:12px 0 0 54px;color:var(--ink-2);font-size:13px;display:flex;flex-direction:column;gap:4px}
+.mk-ui-ux-pro-max .dlg ul li{display:flex;gap:8px;align-items:center}
+.mk-ui-ux-pro-max .dlg ul svg{color:var(--good)}
+.mk-ui-ux-pro-max .dlg-f{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+@keyframes mk-ui-ux-pro-max-fade{from{opacity:0}to{opacity:1}}
+@keyframes mk-ui-ux-pro-max-pop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .mk-ui-ux-pro-max *,.mk-ui-ux-pro-max *::before,.mk-ui-ux-pro-max *::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="mk-ui-ux-pro-max" id="mk-ui-ux-pro-max">
+
+  <header class="titlebar">
+    <span class="brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 21h7L13.2 4.4a1.2 1.2 0 0 0-2.4 0L8.5 21z"/><path d="M12 17 17 7"/><path d="M9.6 17h4.8"/></svg>
+      Cadence
+    </span>
+    <div class="tb-right">
+      <button type="button" class="theme" data-theme-toggle aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <span data-theme-label>Dark</span>
+      </button>
+      <div class="winctl">
+        <button type="button" aria-label="Minimize"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor"/></svg></button>
+        <button type="button" aria-label="Maximize"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"><rect x="0.5" y="0.5" width="9" height="9"/></svg></button>
+        <button type="button" class="close" aria-label="Close"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav" aria-label="Views">
+    <div class="nav-label">Practice</div>
+    <button type="button" class="nav-item" data-tab="today" aria-current="page">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg>
+      Today <span class="badge">8</span>
+    </button>
+    <button type="button" class="nav-item" data-tab="messages">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      Messages
+    </button>
+    <button type="button" class="nav-item" data-tab="patterns">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg>
+      Patterns
+    </button>
+    <div class="nav-foot"><b>Goal: 2.0 naturalness</b>Messages below the goal join your queue after each run.</div>
+  </nav>
+
+  <!-- ============ TODAY ============ -->
+  <main class="main" data-panel="today" tabindex="-1">
+    <div class="eyebrow">Wednesday, 22 October</div>
+    <h1 class="h1">You sounded more natural today</h1>
+    <p class="sub">Eight messages are worth a second look. Start with the one that sounds least natural.</p>
+
+    <div class="hero-row">
+      <section class="panel" aria-label="Today's naturalness">
+        <div class="eyebrow" style="margin-bottom:8px">Today's naturalness</div>
+        <div class="score-top">
+          <div class="score-big num">1.7<small>/ 3</small></div>
+          <div class="score-meta">
+            <span class="meter mid" role="img" aria-label="Naturalness 1.7 of 3, fair"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="n">1.7</span><span class="w">Fair</span></span>
+            <span class="delta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>+0.3 vs last week</span>
+          </div>
+        </div>
+        <svg class="spark" viewBox="0 0 400 74" role="img" aria-label="Daily average naturalness for the last 7 days: 1.2, 1.4, 1.3, 1.5, 1.4, 1.6, 1.7. Goal 2.0.">
+          <line class="goal" x1="0" x2="400" y1="12" y2="12"/>
+          <text x="398" y="9" text-anchor="end">goal 2.0</text>
+          <path class="ln" d="M8 56 L72 46 L136 50 L200 40 L264 44 L328 34 L392 28"/>
+          <circle class="dt" cx="392" cy="28" r="4"/>
+          <text x="8" y="72">Thu</text><text x="392" y="72" text-anchor="end">Today</text>
+        </svg>
+        <div class="stats"><span><b>12</b> screened today</span><span><b>8</b> queued</span><span><b>1</b> reviewed</span><span><b>2</b> pending</span></div>
+      </section>
+
+      <section class="panel next" aria-label="Next run">
+        <div class="eyebrow">Next run</div>
+        <div class="time">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Tonight, 22:00
+        </div>
+        <p>Cadence reads new Claude Code prompts, screens them with Jev, and coaches the three worst ones. Last run finished yesterday at 22:00.</p>
+        <button type="button" class="btn btn-primary" data-open-dialog>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>
+          Run now
+        </button>
+      </section>
+    </div>
+
+    <div class="q-head"><h2 class="h2" style="margin:0">Worst messages first</h2><span class="muted" style="font-size:12px">Lowest naturalness at the top</span></div>
+    <ol class="q-list" data-queue></ol>
+  </main>
+
+  <!-- ============ MESSAGES ============ -->
+  <main class="main" data-panel="messages" hidden tabindex="-1">
+    <div class="eyebrow">Everything Cadence has read</div>
+    <h1 class="h1">Messages</h1>
+    <div class="msgs" style="margin-top:14px">
+      <div>
+        <div class="seg" role="group" aria-label="Show">
+          <button type="button" data-filter="queue" aria-pressed="true">Queue</button>
+          <button type="button" data-filter="reviewed" aria-pressed="false">Reviewed</button>
+          <button type="button" data-filter="all" aria-pressed="false">All</button>
+        </div>
+        <ul class="rows" data-rows></ul>
+      </div>
+      <article class="card" data-card aria-label="Message"></article>
+    </div>
+  </main>
+
+  <!-- ============ PATTERNS ============ -->
+  <main class="main" data-panel="patterns" hidden tabindex="-1">
+    <div class="eyebrow">Last 8 weeks, 64 screened messages</div>
+    <h1 class="h1">Patterns</h1>
+    <p class="sub">The same few slips come back. Fix these and your average moves the most.</p>
+    <div class="pat">
+      <section class="panel">
+        <h2 class="h2">Where you lose naturalness</h2>
+        <ol class="bar-list">
+          <li class="bar-row"><span>Grammar</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-n num">14</span><span class="bar-avg num">avg 1.1</span></li>
+          <li class="bar-row"><span>Word choice</span><span class="bar-track"><span class="bar-fill" style="width:64%"></span></span><span class="bar-n num">9</span><span class="bar-avg num">avg 1.7</span></li>
+          <li class="bar-row"><span>Preposition or word pairing</span><span class="bar-track"><span class="bar-fill" style="width:43%"></span></span><span class="bar-n num">6</span><span class="bar-avg num">avg 1.3</span></li>
+          <li class="bar-row"><span>Portuguese-style phrasing</span><span class="bar-track"><span class="bar-fill" style="width:36%"></span></span><span class="bar-n num">5</span><span class="bar-avg num">avg 1.0</span></li>
+          <li class="bar-row"><span>Tone for a work chat</span><span class="bar-track"><span class="bar-fill" style="width:22%"></span></span><span class="bar-n num">3</span><span class="bar-avg num">avg 1.8</span></li>
+          <li class="bar-row"><span>Word order</span><span class="bar-track"><span class="bar-fill" style="width:22%"></span></span><span class="bar-n num">3</span><span class="bar-avg num">avg 1.3</span></li>
+        </ol>
+        <p class="muted" style="font-size:12px;margin-top:12px">Count of flagged messages and their average naturalness (0 to 3).</p>
+      </section>
+
+      <section class="panel">
+        <h2 class="h2">Naturalness over time</h2>
+        <svg class="chart" viewBox="0 0 400 200" role="img" aria-label="Daily average naturalness 0 to 3 over 12 days, rising from 1.2 to 1.7. The 7-day rolling average is 1.6. Goal 2.0.">
+          <g><line class="grid" x1="30" x2="392" y1="180" y2="180"/><text x="22" y="184" text-anchor="end">0</text></g>
+          <g><line class="grid" x1="30" x2="392" y1="125" y2="125"/><text x="22" y="129" text-anchor="end">1</text></g>
+          <g><line class="grid" x1="30" x2="392" y1="70" y2="70"/><text x="22" y="74" text-anchor="end">2</text></g>
+          <g><line class="grid" x1="30" x2="392" y1="15" y2="15"/><text x="22" y="19" text-anchor="end">3</text></g>
+          <line class="goal" x1="30" x2="392" y1="70" y2="70"/>
+          <text class="gl" x="388" y="62" text-anchor="end">goal 2.0</text>
+          <path class="daily" d="M40 114 L73 100 L106 108 L139 96 L172 104 L205 92 L238 98 L271 90 L304 94 L337 84 L370 80 L388 76"/>
+          <path class="roll" d="M40 112 L106 106 L172 102 L238 97 L304 92 L388 84"/>
+          <circle class="dot" cx="40" cy="114" r="3.5"/><circle class="dot" cx="139" cy="96" r="3.5"/><circle class="dot" cx="238" cy="98" r="3.5"/><circle class="dot" cx="337" cy="84" r="3.5"/><circle class="dot" cx="388" cy="76" r="3.5"/>
+          <text x="40" y="196" text-anchor="middle">10-11</text><text x="139" y="196" text-anchor="middle">10-14</text><text x="238" y="196" text-anchor="middle">10-17</text><text x="337" y="196" text-anchor="middle">10-20</text><text x="388" y="196" text-anchor="end">Today</text>
+        </svg>
+        <p class="legend"><span><i class="key"></i>Daily (solid)</span><span><i class="key roll"></i>7-day (dashed)</span><span><i class="key goal"></i>Goal 2.0 (dotted)</span></p>
+      </section>
+
+      <section class="panel">
+        <h2 class="h2">Your coached issues</h2>
+        <ul class="impact">
+          <li><span>Grammar</span><span class="ba">Before <b class="num">38%</b> &rarr; After <b class="num">24%</b></span><span class="verdict down"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>Down</span></li>
+          <li><span>Word choice</span><span class="ba">Before <b class="num">22%</b> &rarr; After <b class="num">21%</b></span><span class="verdict same">No change</span></li>
+          <li><span>Portuguese-style phrasing</span><span class="ba">Before <b class="num">18%</b> &rarr; After <b class="num">n/a</b></span><span class="verdict few">Not enough data</span></li>
+        </ul>
+        <p class="muted" style="font-size:12px;margin-top:8px">Flag rate before vs after you first coached each issue. Not proof of cause.</p>
+      </section>
+
+      <section class="panel">
+        <h2 class="h2">Rules worth memorising</h2>
+        <ul class="tips">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg><span>Say <b>"I agree"</b>, not "I am agree". Same for "I understand".</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg><span>Deadlines take <b>"by"</b>: by Friday, by noon.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg><span>Yesterday, last week: <b>simple past</b>, not "have made".</span></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer class="status" aria-live="polite">
+    <span><b>8</b> queued</span><span><b>1</b> reviewed</span><span><b>2</b> pending</span>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="run" data-run>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
+      Last run ok, yesterday
+    </span>
+    <span class="grow">Next run Today, 22:00</span>
+    <button type="button" class="btn" data-open-dialog data-run-btn>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>
+      Run now
+    </button>
+  </footer>
+
+  <!-- In-app Dialog, hidden until a "Run now" click -->
+  <div class="dlg-scrim" data-scrim hidden>
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mk-uxpm-dlg-title" aria-describedby="mk-uxpm-dlg-desc">
+      <div class="dlg-h">
+        <span class="dlg-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></span>
+        <div>
+          <h2 id="mk-uxpm-dlg-title">Run Cadence now?</h2>
+          <p id="mk-uxpm-dlg-desc">This runs the same steps as the 22:00 run. It takes about a minute, and tonight's run will still happen.</p>
+        </div>
+      </div>
+      <ul>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Read new Claude Code prompts</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Screen 2 pending messages with Jev</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Coach up to 3 of the worst</li>
+      </ul>
+      <div class="dlg-f">
+        <button type="button" class="btn" data-dlg-cancel>Cancel</button>
+        <button type="button" class="btn btn-primary" data-dlg-ok>Run now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var root = document.querySelector('.mk-ui-ux-pro-max');
+  if (!root) return;
+  var $ = function (s, c) { return (c || root).querySelector(s); };
+  var $$ = function (s, c) { return Array.prototype.slice.call((c || root).querySelectorAll(s)); };
+
+  // Sample data modelled on src/dev/mockBackend.ts
+  var DATA = [
+    { id: 'report', text: 'I will send you the report until the end of the day.', bad: 'until', ago: '2 hours ago', project: 'billing-api', n: 1.2, issue: 'Preposition or word pairing',
+      casual: "I'll send you the report by the end of the day.", pro: 'I will send you the report by the end of the day.',
+      why: "'Until' sets a limit you reach and then stop at, but here you mean a deadline. English pairs 'by' with a deadline.", tip: 'Deadlines take "by": by the end of the day, by Friday, by noon.', attempt: null },
+    { id: 'deploy', text: 'Please to check the deploy when you have time.', bad: 'Please to check', ago: '5 hours ago', project: 'web-app', n: 0.8, issue: 'Grammar',
+      casual: 'Could you check the deploy when you have a moment?', pro: 'Could you check the deploy when you have time?',
+      why: "'Please' goes straight before the verb, without 'to'. 'Could you' also sounds smoother in a chat.", tip: "Use 'please + verb' or 'could you + verb', with no 'to' in between.", attempt: 'Please check the deploy when you get a moment.' },
+    { id: 'proposal', text: "I am agree with the proposal, let's go ahead.", bad: 'I am agree', ago: '9 hours ago', project: 'web-app', n: 1.4, issue: 'Grammar',
+      casual: "I agree with the proposal, let's go ahead.", pro: "I agree with the proposal. Let's go ahead.",
+      why: "'Agree' is a verb in English, so it takes no 'am'. The slip usually comes from Portuguese 'estou de acordo'.", tip: "Say 'I agree', not 'I am agree'. Same for 'I understand', not 'I am understand'.", attempt: null },
+    { id: 'pr', text: 'Can you give a look at the PR when you can?', bad: 'give a look', ago: '14 hours ago', project: 'ops', n: 1.9, issue: 'Word choice',
+      casual: 'Can you take a look at the PR when you get a chance?', pro: 'Could you review the PR when you get a chance?',
+      why: "'Give a look' is a literal translation. English says 'take a look' for a quick glance, or 'review' for a real check.", tip: "'Take a look' for a quick glance, 'review' for a proper check.", attempt: null },
+    { id: 'release', text: 'I am remembering you that the release is on Friday.', bad: 'I am remembering you', ago: 'yesterday', project: 'web-app', n: 1.1, issue: 'Portuguese-style phrasing',
+      casual: 'Just a reminder: the release is on Friday.', pro: 'A reminder that the release is on Friday.',
+      why: "'Remember someone of something' is Portuguese word order carried into English. In English you remind someone.", tip: "Say 'remind you that', not 'remember you that'.", attempt: null },
+    { id: 'tests', text: 'The thing is that the tests they are failing again in the CI.', bad: 'they are', ago: 'yesterday', project: 'billing-api', n: 1.3, issue: 'Word order',
+      casual: 'The tests are failing again in CI.', pro: 'The tests are failing again in the CI pipeline.',
+      why: "The subject comes before the verb, and 'the thing is that' adds nothing. Start with the point.", tip: "Start with the subject: 'The tests are failing', not 'The thing is that the tests they are failing'.", attempt: null },
+    { id: 'asap', text: 'Hey dude, can you check it asap?', bad: 'dude', ago: '2 days ago', project: 'ops', n: 1.8, issue: 'Tone for a work chat',
+      casual: 'Hey, can you check this when you get a chance?', pro: 'Could you check this when you have a moment?',
+      why: "Chat is informal, but 'dude' and 'asap' read as too casual when you work with clients or managers.", tip: "Swap 'asap' for 'when you get a chance' or 'today if possible'.", attempt: null },
+    { id: 'invoice', text: "I'm going to ping you tomorrow morning about the invoice.", bad: '', ago: '3 hours ago', project: 'billing-api', n: 3.0, issue: 'Sounds native', reviewed: false, ok: true },
+    { id: 'side', text: 'Let me know if you need anything else from my side.', bad: '', ago: '7 hours ago', project: 'web-app', n: 2.9, issue: 'Sounds native', reviewed: true, ok: true,
+      casual: '', pro: '', why: '', tip: '' }
+  ];
+  var byId = {};
+  DATA.forEach(function (m) { byId[m.id] = m; });
+
+  var ICON_ARROW = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  var ICON_BULB = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>';
+  var ICON_COPY = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+  var ICON_CHECK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>';
+  var ICON_SPARK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>';
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function marked(m) {
+    var t = esc(m.text);
+    if (!m.bad) return t;
+    var b = esc(m.bad);
+    return t.replace(b, '<mark>' + b + '</mark>');
+  }
+  function meter(n) {
+    var lit = Math.min(4, Math.max(1, Math.floor(n) + 1));
+    var tone = n < 1 ? 'low' : n < 2 ? 'mid' : 'high';
+    var word = n < 1 ? 'Needs work' : n < 2 ? 'Fair' : 'Natural';
+    var bars = '';
+    for (var i = 0; i < 4; i++) bars += '<i' + (i < lit ? ' class="on"' : '') + '></i>';
+    return '<span class="meter ' + tone + '" role="img" aria-label="Naturalness ' + n.toFixed(1) + ' of 3, ' + word.toLowerCase() + '"><span class="bars" aria-hidden="true">' + bars + '</span><span class="n">' + n.toFixed(1) + '</span><span class="w">' + word + '</span></span>';
+  }
+  function chip(m) { return '<span class="chip' + (m.ok ? ' ok' : '') + '">' + esc(m.issue) + '</span>'; }
+
+  // ---- Today queue ----
+  var queue = DATA.filter(function (m) { return !m.ok; }).sort(function (a, b) { return a.n - b.n; }).slice(0, 5);
+  $('[data-queue]').innerHTML = queue.map(function (m, i) {
+    return '<li><button type="button" class="q-item" data-open="' + m.id + '" aria-label="Open message ' + (i + 1) + ', naturalness ' + m.n.toFixed(1) + '">' +
+      '<span class="rank" aria-hidden="true">' + (i + 1) + '</span>' +
+      '<span><span class="q-orig">' + esc(m.text) + '</span><span class="q-new">' + ICON_ARROW + '<span>' + esc(m.casual) + '</span></span></span>' +
+      '<span class="q-side">' + meter(m.n) + chip(m) + '</span></button></li>';
+  }).join('');
+
+  // ---- Messages ----
+  var state = { filter: 'queue', open: 'deploy', register: 'casual', copied: false, reviewed: {} };
+  var rows = $('[data-rows]'), card = $('[data-card]');
+
+  function visible() {
+    return DATA.filter(function (m) {
+      var rev = m.reviewed || state.reviewed[m.id];
+      if (state.filter === 'queue') return !m.ok && !rev;
+      if (state.filter === 'reviewed') return !!rev;
+      return true;
+    });
+  }
+  function renderRows() {
+    var list = visible();
+    rows.innerHTML = list.length ? list.map(function (m) {
+      return '<li><button type="button" class="row' + (m.id === state.open ? ' active' : '') + '" data-pick="' + m.id + '" aria-pressed="' + (m.id === state.open) + '">' +
+        '<span class="row-text">' + esc(m.text) + '</span><span class="row-meta"><span>' + m.ago + '</span>' + meter(m.n) + '</span></button></li>';
+    }).join('') : '<li class="empty">No messages here.</li>';
+  }
+  function renderCard() {
+    var m = byId[state.open];
+    if (!m) { card.innerHTML = '<p class="empty">Pick a message to see its rewrite.</p>'; return; }
+    var rev = m.reviewed || state.reviewed[m.id];
+    var head = '<header class="card-h"><span>' + esc(m.project) + ' &middot; sent ' + m.ago + '</span>' + chip(m) + '</header>';
+    if (m.ok && !m.casual) {
+      card.innerHTML = head + '<div class="rw"><div class="rw-label">Sounds native</div><p class="rw-text">' + esc(m.text) + '</p><div class="rw-actions">' + meter(m.n) + '</div></div>' +
+        '<footer class="card-f"><span class="muted">Reviewed yesterday</span></footer>';
+      return;
+    }
+    var txt = state.register === 'casual' ? m.casual : m.pro;
+    card.innerHTML = head +
+      '<section class="rw" aria-label="Suggested rewrite">' +
+        '<div class="rw-top"><span class="rw-label">' + ICON_SPARK + 'Say it like this</span>' +
+        '<div class="seg" role="group" aria-label="Register"><button type="button" data-reg="casual" aria-pressed="' + (state.register === 'casual') + '">Casual</button><button type="button" data-reg="pro" aria-pressed="' + (state.register === 'pro') + '">Professional</button></div></div>' +
+        '<p class="rw-text">' + esc(txt) + '</p>' +
+        '<div class="rw-actions"><button type="button" class="btn btn-primary btn-sm" data-copy>' + (state.copied ? ICON_CHECK + 'Copied' : ICON_COPY + 'Copy rewrite') + '</button>' +
+        '<span class="after">Naturalness after rewrite <span class="meter high" role="img" aria-label="Naturalness 3.0 of 3, natural"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="n">3.0</span></span></span></div>' +
+      '</section>' +
+      '<div class="orig"><div class="cap"><span>What you wrote</span>' + meter(m.n) + '</div><p class="t">' + marked(m) + '</p></div>' +
+      '<div class="why"><h3>What was off</h3><p>' + esc(m.why) + '</p></div>' +
+      '<aside class="remember">' + ICON_BULB + '<div><b>Remember</b> ' + esc(m.tip) + '</div></aside>' +
+      '<footer class="card-f"><span class="muted" style="font-size:12px">' + (m.attempt ? 'Your attempt: &ldquo;' + esc(m.attempt) + '&rdquo;' : 'No attempt saved') + '</span>' +
+      '<button type="button" class="btn btn-sm" data-review' + (rev ? ' disabled' : '') + '>' + (rev ? ICON_CHECK + 'Reviewed' : ICON_CHECK + 'Mark reviewed') + '</button></footer>';
+  }
+  function render() { renderRows(); renderCard(); }
+
+  // ---- Tabs ----
+  function show(tab) {
+    $$('[data-panel]').forEach(function (p) { p.hidden = p.getAttribute('data-panel') !== tab; });
+    $$('[data-tab]').forEach(function (b) {
+      if (b.getAttribute('data-tab') === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+  }
+
+  // ---- Dialog (in-app; never alert/confirm) ----
+  var scrim = $('[data-scrim]'), lastFocus = null, runTimer = null;
+  function openDlg(trigger) {
+    lastFocus = trigger || document.activeElement;
+    scrim.hidden = false;
+    $('[data-dlg-ok]').focus();
+  }
+  function closeDlg() {
+    scrim.hidden = true;
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  function startRun() {
+    var run = $('[data-run]'), btn = $('[data-run-btn]');
+    btn.disabled = true;
+    run.innerHTML = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg>Screening 1 of 2';
+    clearTimeout(runTimer);
+    runTimer = setTimeout(function () { run.innerHTML = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg>Coaching 2 of 3'; }, 1400);
+    runTimer = setTimeout(function () {
+      run.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Last run ok, just now';
+      btn.disabled = false;
+    }, 3000);
+  }
+
+  root.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('button') : null;
+    if (!t || !root.contains(t)) return;
+    if (t.hasAttribute('data-tab')) { show(t.getAttribute('data-tab')); return; }
+    if (t.hasAttribute('data-open')) { state.open = t.getAttribute('data-open'); state.filter = 'queue'; state.copied = false; $$('[data-filter]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-filter') === 'queue')); }); render(); show('messages'); return; }
+    if (t.hasAttribute('data-filter')) { state.filter = t.getAttribute('data-filter'); $$('[data-filter]').forEach(function (b) { b.setAttribute('aria-pressed', String(b === t)); }); render(); return; }
+    if (t.hasAttribute('data-pick')) { state.open = t.getAttribute('data-pick'); state.copied = false; render(); return; }
+    if (t.hasAttribute('data-reg')) { state.register = t.getAttribute('data-reg'); state.copied = false; renderCard(); var r = $('[data-reg="' + state.register + '"]'); if (r) r.focus(); return; }
+    if (t.hasAttribute('data-copy')) {
+      var m = byId[state.open], txt = state.register === 'casual' ? m.casual : m.pro;
+      try { navigator.clipboard.writeText(txt).catch(function () {}); } catch (err) {}
+      state.copied = true; renderCard(); $('[data-copy]').focus();
+      setTimeout(function () { state.copied = false; if ($('[data-copy]')) renderCard(); }, 1500);
+      return;
+    }
+    if (t.hasAttribute('data-review')) { state.reviewed[state.open] = true; render(); return; }
+    if (t.hasAttribute('data-open-dialog')) { openDlg(t); return; }
+    if (t.hasAttribute('data-dlg-cancel')) { closeDlg(); return; }
+    if (t.hasAttribute('data-dlg-ok')) { closeDlg(); startRun(); return; }
+    if (t.hasAttribute('data-theme-toggle')) {
+      var dark = root.classList.toggle('mk-dark');
+      t.setAttribute('aria-pressed', String(dark));
+      $('[data-theme-label]').textContent = dark ? 'Light' : 'Dark';
+    }
+  });
+  scrim.addEventListener('mousedown', function (e) { if (e.target === scrim) closeDlg(); });
+  root.addEventListener('keydown', function (e) {
+    if (scrim.hidden) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeDlg(); }
+    else if (e.key === 'Tab') {
+      var items = $$('button:not(:disabled)', scrim), at = items.indexOf(document.activeElement);
+      var next = e.shiftKey ? (at <= 0 ? items.length - 1 : at - 1) : (at === items.length - 1 ? 0 : at + 1);
+      e.preventDefault(); items[next].focus();
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
