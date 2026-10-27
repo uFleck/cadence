@@ -55,6 +55,8 @@ export interface Attempt {
   text: string;
   /** Epoch ms */
   createdAt: number;
+  /** How natural this version sounds. Null when it was saved before attempts were scored, or Jev was unreachable. */
+  screen: Screen | null;
 }
 
 export interface Message {
@@ -70,9 +72,11 @@ export interface Message {
   attempts: Attempt[];
   /** Epoch ms when the user marked it reviewed, or null. */
   reviewedAt: number | null;
+  /** Epoch ms when the user set it aside as not fit for practice, or null. Excluded messages leave the queue, the counts and the patterns. */
+  excludedAt: number | null;
 }
 
-export type MessageFilter = "queue" | "reviewed" | "all";
+export type MessageFilter = "queue" | "reviewed" | "all" | "excluded";
 
 export interface MessageQuery {
   filter: MessageFilter;
@@ -238,6 +242,7 @@ export const api = {
   coachMessage: (id: string) => invoke<Coaching>("coach_message", { id }),
   saveAttempt: (id: string, text: string) => invoke<Attempt>("save_attempt", { id, text }),
   markReviewed: (id: string, reviewed: boolean) => invoke<void>("mark_reviewed", { id, reviewed }),
+  setExcluded: (id: string, excluded: boolean) => invoke<void>("set_excluded", { id, excluded }),
   patterns: () => invoke<Patterns>("patterns"),
   getSettings: () => invoke<Settings>("get_settings"),
   setSettings: (settings: Settings) => invoke<Settings>("set_settings", { settings }),

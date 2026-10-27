@@ -198,6 +198,14 @@
 .sect-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 8px; }
 .sect-h h3 { margin: 0; }
 .attempt-text { margin: 0; color: var(--ink); font: 400 17px/1.5 var(--serif); white-space: pre-wrap; overflow-wrap: anywhere; }
+.progress { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 10px; }
+.trail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; margin: 0; padding: 0; list-style: none; }
+.trail li { display: inline-flex; align-items: center; gap: 8px; }
+.trail li + li::before { content: "→"; margin: 0 6px 0 4px; color: var(--muted); }
+.trail-label { color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.delta { font: 600 13px var(--sans); font-variant-numeric: tabular-nums; color: var(--muted); }
+.delta.up { color: var(--good); }
+.delta.down { color: var(--bad); }
 .why p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.6; max-width: 64ch; }
 
 /* The 4px of padding keeps focus rings from being clipped by the height animation. */
@@ -262,7 +270,7 @@
   border-top: 1px solid var(--line);
 }
 .card-f:empty { display: none; }
-.card-f .btn { margin-left: auto; }
+.card-f .btn:last-child { margin-left: auto; }
 .btn.is-done {
   border-color: color-mix(in srgb, var(--good) 45%, transparent);
   background: var(--good-soft);

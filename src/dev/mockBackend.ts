@@ -196,8 +196,14 @@ export function installMock() {
       source: s.source ?? "transcript",
       screen: s.screen ?? null,
       coaching,
-      attempts: (s.attempts ?? []).map((text): Attempt => ({ id: attemptSeq++, text, createdAt: Date.now() - s.hours * HOUR })),
+      attempts: (s.attempts ?? []).map((text): Attempt => ({
+        id: attemptSeq++,
+        text,
+        createdAt: Date.now() - s.hours * HOUR,
+        screen: s.screen ? screen(Math.min(3, s.screen.naturalness + 1.1), "none") : null,
+      })),
       reviewedAt: s.reviewed ? Date.now() - DAY : null,
+      excludedAt: null,
     };
   });
   const find = (id: unknown) => {
@@ -241,7 +247,7 @@ export function installMock() {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   const isQueued = (m: Message) =>
-    !!m.screen && m.screen.english >= 0.5 && m.screen.prose >= 0.5 && m.screen.naturalness < settings.flagThreshold && m.words >= settings.minWords && m.reviewedAt === null;
+    !!m.screen && m.screen.english >= 0.5 && m.screen.prose >= 0.5 && m.screen.naturalness < settings.flagThreshold && m.words >= settings.minWords && m.reviewedAt === null && m.excludedAt === null;
 
   const nextRunAt = () => {
     const d = new Date();
@@ -270,14 +276,17 @@ export function installMock() {
         .sort((a, b) => (a.screen?.naturalness ?? 0) - (b.screen?.naturalness ?? 0))
         .slice(offset, offset + limit);
     }
+    if (filter === "excluded") {
+      return messages.filter((m) => m.excludedAt !== null).sort((a, b) => b.ts - a.ts).slice(offset, offset + limit);
+    }
     return messages
-      .filter((m) => filter === "all" || m.reviewedAt !== null)
+      .filter((m) => m.excludedAt === null && (filter === "all" || m.reviewedAt !== null))
       .sort((a, b) => b.ts - a.ts)
       .slice(offset, offset + limit);
   };
 
   const patterns = (): Patterns => {
-    const screened = messages.filter((m): m is Message & { screen: Screen } => m.screen !== null);
+    const screened = messages.filter((m): m is Message & { screen: Screen } => m.screen !== null && m.excludedAt === null);
     const byIssue = new Map<Issue, { count: number; sum: number }>();
     const byDay = new Map<string, { count: number; sum: number }>();
     for (const m of screened) {
@@ -362,12 +371,24 @@ export function installMock() {
       return c;
     },
     save_attempt: (a) => {
-      const attempt: Attempt = { id: attemptSeq++, text: String(a.text), createdAt: Date.now() };
-      find(a.id).attempts.push(attempt);
+      const m = find(a.id);
+      // Each try lands a little higher than the last one, so the progress strip has something to show.
+      const last = m.attempts[m.attempts.length - 1]?.screen ?? m.screen;
+      const attempt: Attempt = {
+        id: attemptSeq++,
+        text: String(a.text),
+        createdAt: Date.now(),
+        screen: screen(Math.min(3, (last?.naturalness ?? 1) + 0.6), "none"),
+      };
+      m.attempts.push(attempt);
       return attempt;
     },
     mark_reviewed: (a) => {
       find(a.id).reviewedAt = a.reviewed ? Date.now() : null;
+      emit("messages-changed", undefined);
+    },
+    set_excluded: (a) => {
+      find(a.id).excludedAt = a.excluded ? Date.now() : null;
       emit("messages-changed", undefined);
     },
     patterns,

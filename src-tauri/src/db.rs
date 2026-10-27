@@ -89,20 +89,21 @@ LEFT JOIN interview_answers a ON a.question_id = q.id
 const MESSAGE_SELECT: &str = "
 SELECT m.id, m.text, m.ts, m.project, m.words, m.source, m.reviewed_at,
        s.english, s.naturalness, s.confidence, s.issue, s.issue_confidence,
-       c.rewrites, c.explanation, c.tip, c.issue, c.created_at, s.prose
+       c.rewrites, c.explanation, c.tip, c.issue, c.created_at, s.prose, m.excluded_at
 FROM messages m
 LEFT JOIN screens s ON s.message_id = m.id
 LEFT JOIN coaching c ON c.message_id = m.id
 ";
 
-/// The screens whose naturalness means something: English, written by the user. A screen saved before `prose`
-/// existed has no value, so it is left out until the next run screens it again.
-fn is_prose_sql() -> String {
-    format!("s.english >= {MIN_ENGLISH} AND s.prose >= {MIN_PROSE}")
+/// The screens whose naturalness means something: English, written by the user, and not set aside by hand
+/// as unfit for practice. A screen saved before `prose` existed has no value, so it is left out until the
+/// next run screens it again.
+fn counted_sql() -> String {
+    format!("s.english >= {MIN_ENGLISH} AND s.prose >= {MIN_PROSE} AND m.excluded_at IS NULL")
 }
 
 fn queue_where() -> String {
-    format!("s.message_id IS NOT NULL AND {} AND s.naturalness < ?1 AND m.reviewed_at IS NULL AND m.words >= ?2", is_prose_sql())
+    format!("s.message_id IS NOT NULL AND {} AND s.naturalness < ?1 AND m.reviewed_at IS NULL AND m.words >= ?2", counted_sql())
 }
 
 /// An earlier build redacted to `[file]` and `[link]`, which Jev scored worse than prose. The original path is
@@ -222,6 +223,18 @@ impl Db {
         if !has_prose {
             conn.execute("ALTER TABLE screens ADD COLUMN prose REAL", [])?;
         }
+        let has_excluded = conn
+            .prepare("SELECT 1 FROM pragma_table_info('messages') WHERE name = 'excluded_at'")?
+            .exists([])?;
+        if !has_excluded {
+            conn.execute("ALTER TABLE messages ADD COLUMN excluded_at INTEGER", [])?;
+        }
+        let has_attempt_screen = conn
+            .prepare("SELECT 1 FROM pragma_table_info('attempts') WHERE name = 'screen'")?
+            .exists([])?;
+        if !has_attempt_screen {
+            conn.execute("ALTER TABLE attempts ADD COLUMN screen TEXT", [])?;
+        }
         redact_stored(&conn)?;
         reread_sources_after_redaction_change(&conn)?;
         seed_interview_bank(&conn)?;
@@ -278,7 +291,7 @@ impl Db {
         let conn = self.conn();
         let mut stmt = conn.prepare(
             "SELECT m.id, m.text FROM messages m
-             WHERE m.words >= ?1
+             WHERE m.words >= ?1 AND m.excluded_at IS NULL
                AND NOT EXISTS (SELECT 1 FROM screens s WHERE s.message_id = m.id AND s.prose IS NOT NULL)
              ORDER BY m.ts DESC LIMIT ?2",
         )?;
@@ -325,7 +338,8 @@ impl Db {
             }
             MessageFilter::Reviewed => {
                 let sql = format!(
-                    "{MESSAGE_SELECT} WHERE m.reviewed_at IS NOT NULL ORDER BY m.reviewed_at DESC LIMIT ?1 OFFSET ?2"
+                    "{MESSAGE_SELECT} WHERE m.reviewed_at IS NOT NULL AND m.excluded_at IS NULL
+                     ORDER BY m.reviewed_at DESC LIMIT ?1 OFFSET ?2"
                 );
                 let mut stmt = conn.prepare(&sql)?;
                 let rows = stmt.query_map(params![limit, offset], read_message)?;
@@ -333,10 +347,18 @@ impl Db {
             }
             MessageFilter::All => {
                 let sql = format!(
-                    "{MESSAGE_SELECT} WHERE m.words >= ?1 ORDER BY m.ts DESC LIMIT ?2 OFFSET ?3"
+                    "{MESSAGE_SELECT} WHERE m.words >= ?1 AND m.excluded_at IS NULL ORDER BY m.ts DESC LIMIT ?2 OFFSET ?3"
                 );
                 let mut stmt = conn.prepare(&sql)?;
                 let rows = stmt.query_map(params![settings.min_words, limit, offset], read_message)?;
+                rows.collect::<Result<Vec<_>>>()?
+            }
+            MessageFilter::Excluded => {
+                let sql = format!(
+                    "{MESSAGE_SELECT} WHERE m.excluded_at IS NOT NULL ORDER BY m.excluded_at DESC LIMIT ?1 OFFSET ?2"
+                );
+                let mut stmt = conn.prepare(&sql)?;
+                let rows = stmt.query_map(params![limit, offset], read_message)?;
                 rows.collect::<Result<Vec<_>>>()?
             }
         };
@@ -374,7 +396,14 @@ impl Db {
             "INSERT INTO attempts (message_id, text, created_at) VALUES (?1, ?2, ?3)",
             params![id, text, now],
         )?;
-        Ok(Attempt { id: conn.last_insert_rowid(), text: text.to_string(), created_at: now })
+        Ok(Attempt { id: conn.last_insert_rowid(), text: text.to_string(), created_at: now, screen: None })
+    }
+
+    /// The Jev screen of one attempt, stored as JSON like an interview answer's.
+    pub fn save_attempt_screen(&self, attempt_id: i64, screen: &Screen) -> Result<()> {
+        let screen = serde_json::to_string(screen).unwrap_or_default();
+        self.conn().execute("UPDATE attempts SET screen = ?2 WHERE id = ?1", params![attempt_id, screen])?;
+        Ok(())
     }
 
     pub fn mark_reviewed(&self, id: &str, reviewed_at: Option<i64>) -> Result<()> {
@@ -382,11 +411,22 @@ impl Db {
         Ok(())
     }
 
+    /// Sets a message aside as unfit for practice (pasted text, file names that make it read oddly), or puts it back.
+    pub fn set_excluded(&self, id: &str, excluded_at: Option<i64>) -> Result<()> {
+        self.conn().execute("UPDATE messages SET excluded_at = ?2 WHERE id = ?1", params![id, excluded_at])?;
+        Ok(())
+    }
+
     pub fn counts(&self, settings: &Settings) -> Result<Overview> {
         let conn = self.conn();
-        let total: i64 = conn.query_row("SELECT COUNT(*) FROM messages WHERE words >= ?1", [settings.min_words], |r| r.get(0))?;
+        let total: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM messages WHERE words >= ?1 AND excluded_at IS NULL",
+            [settings.min_words],
+            |r| r.get(0),
+        )?;
         let screened: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM messages m JOIN screens s ON s.message_id = m.id WHERE s.prose IS NOT NULL AND m.words >= ?1",
+            "SELECT COUNT(*) FROM messages m JOIN screens s ON s.message_id = m.id
+             WHERE s.prose IS NOT NULL AND m.words >= ?1 AND m.excluded_at IS NULL",
             [settings.min_words],
             |r| r.get(0),
         )?;
@@ -413,7 +453,7 @@ impl Db {
 
     pub fn patterns(&self, settings: &Settings) -> Result<Patterns> {
         let conn = self.conn();
-        let prose = is_prose_sql();
+        let prose = counted_sql();
         let mut stmt = conn.prepare(&format!(
             "SELECT s.issue, COUNT(*), AVG(s.naturalness) FROM messages m JOIN screens s ON s.message_id = m.id
              WHERE {prose} AND s.issue != 'none' AND s.naturalness < ?1 AND m.words >= ?2
@@ -684,6 +724,7 @@ fn read_message(r: &Row) -> Result<Message> {
         words: r.get(4)?,
         source: r.get(5)?,
         reviewed_at: r.get(6)?,
+        excluded_at: r.get(18)?,
         screen,
         coaching,
         attempts: Vec::new(),
@@ -692,10 +733,18 @@ fn read_message(r: &Row) -> Result<Message> {
 
 fn attach_attempts(conn: &Connection, messages: &mut [Message]) -> Result<()> {
     let mut stmt =
-        conn.prepare("SELECT id, text, created_at FROM attempts WHERE message_id = ?1 ORDER BY created_at ASC")?;
+        conn.prepare("SELECT id, text, created_at, screen FROM attempts WHERE message_id = ?1 ORDER BY created_at ASC, id ASC")?;
     for m in messages {
         m.attempts = stmt
-            .query_map([&m.id], |r| Ok(Attempt { id: r.get(0)?, text: r.get(1)?, created_at: r.get(2)? }))?
+            .query_map([&m.id], |r| {
+                let screen: Option<String> = r.get(3)?;
+                Ok(Attempt {
+                    id: r.get(0)?,
+                    text: r.get(1)?,
+                    created_at: r.get(2)?,
+                    screen: screen.and_then(|s| serde_json::from_str::<Screen>(&s).ok()),
+                })
+            })?
             .collect::<Result<Vec<_>>>()?;
     }
     Ok(())
@@ -745,6 +794,44 @@ mod tests {
         assert_eq!(queued(&db), ["flawed"]);
         assert_eq!(db.counts(&Settings::default()).unwrap().queued, 1);
         assert!(db.patterns(&Settings::default()).unwrap().issues.iter().all(|p| p.count == 1));
+    }
+
+    #[test]
+    fn an_excluded_message_leaves_the_queue_counts_and_screening_and_can_come_back() {
+        let db = open("excluded");
+        db.insert_messages(&["keep", "drop"].map(message)).unwrap();
+        db.save_screen("keep", &screen(0.95, 0.9, 1.2), "t", 1).unwrap();
+        db.save_screen("drop", &screen(0.95, 0.9, 1.2), "t", 1).unwrap();
+        db.set_excluded("drop", Some(5)).unwrap();
+        let settings = Settings::default();
+        assert_eq!(queued(&db), ["keep"]);
+        assert_eq!(db.counts(&settings).unwrap().queued, 1);
+        assert_eq!(db.counts(&settings).unwrap().total, 1);
+        assert_eq!(db.patterns(&settings).unwrap().issues[0].count, 1);
+        let list = |filter| db.list_messages(&MessageQuery { filter, limit: 10, offset: 0 }, &settings).unwrap();
+        assert_eq!(list(MessageFilter::All).len(), 1);
+        let hidden = list(MessageFilter::Excluded);
+        assert_eq!(hidden.len(), 1);
+        assert_eq!(hidden[0].excluded_at, Some(5));
+
+        db.insert_messages(&[message("fresh")]).unwrap();
+        db.set_excluded("fresh", Some(6)).unwrap();
+        assert!(db.unscreened(1, 10).unwrap().is_empty());
+
+        db.set_excluded("drop", None).unwrap();
+        assert_eq!(queued(&db).len(), 2);
+    }
+
+    #[test]
+    fn an_attempt_keeps_its_score_and_an_unscored_one_stays_unscored() {
+        let db = open("attempt-screen");
+        db.insert_messages(&[message("x")]).unwrap();
+        let first = db.save_attempt("x", "first try", 1).unwrap();
+        db.save_attempt("x", "second try", 2).unwrap();
+        db.save_attempt_screen(first.id, &screen(0.95, 0.9, 2.1)).unwrap();
+        let stored = db.get_message("x").unwrap().unwrap();
+        assert_eq!(stored.attempts[0].screen.as_ref().map(|s| s.naturalness), Some(2.1));
+        assert!(stored.attempts[1].screen.is_none());
     }
 
     #[test]

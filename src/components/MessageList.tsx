@@ -11,6 +11,7 @@ const FILTERS: [MessageFilter, string][] = [
   ["queue", "Queue"],
   ["reviewed", "Reviewed"],
   ["all", "All"],
+  ["excluded", "Set aside"],
 ];
 
 // Each row waits for its place in its own page, so "Load more" cascades in too instead of all landing at once.
@@ -182,6 +183,10 @@ export function MessageList({ version, notify }: { version: number; notify: Noti
                 message={open}
                 notify={notify}
                 onReviewed={() => {
+                  setOpen(null);
+                  void fetchPage(filter, 0);
+                }}
+                onExcluded={() => {
                   setOpen(null);
                   void fetchPage(filter, 0);
                 }}

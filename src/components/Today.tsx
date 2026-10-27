@@ -317,7 +317,8 @@ const Row = forwardRef<HTMLLIElement, RowProps>(function Row({ m, i, open, intro
               }}
             >
               <div className="t-body-in">
-                <MessageCard message={m} notify={notify} onReviewed={onReviewed} />
+                {/* Reviewing a message and setting it aside both take it out of the queue. */}
+                <MessageCard message={m} notify={notify} onReviewed={onReviewed} onExcluded={onReviewed} />
               </div>
             </motion.div>
           )}

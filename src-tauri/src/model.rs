@@ -149,6 +149,9 @@ pub struct Attempt {
     pub id: i64,
     pub text: String,
     pub created_at: i64,
+    /// How natural the attempt sounds, so the card can show progress against the original. None when
+    /// the attempt was saved before attempts were scored, or when Jev could not be reached.
+    pub screen: Option<Screen>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -164,6 +167,8 @@ pub struct Message {
     pub coaching: Option<Coaching>,
     pub attempts: Vec<Attempt>,
     pub reviewed_at: Option<i64>,
+    /// Set by hand when the message is not fit for practice; it then leaves the queue, the counts and the patterns.
+    pub excluded_at: Option<i64>,
 }
 
 #[derive(Deserialize, Clone, Copy, Debug)]
@@ -172,6 +177,7 @@ pub enum MessageFilter {
     Queue,
     Reviewed,
     All,
+    Excluded,
 }
 
 #[derive(Deserialize, Clone, Debug)]

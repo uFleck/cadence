@@ -20,7 +20,15 @@ const expand = {
 
 const REGISTER_ICON = { casual: "ph-chat-teardrop", professional: "ph-briefcase" } as const;
 
-export function MessageCard({ message, notify, onReviewed }: { message: Message; notify: Notify; onReviewed?: () => void }) {
+type CardProps = {
+  message: Message;
+  notify: Notify;
+  onReviewed?: () => void;
+  /** Called after the message was set aside or put back, so the list can drop or reload it. */
+  onExcluded?: () => void;
+};
+
+export function MessageCard({ message, notify, onReviewed, onExcluded }: CardProps) {
   const [draft, setDraft] = useState("");
   const [attempts, setAttempts] = useState<Attempt[]>(message.attempts);
   const [coaching, setCoaching] = useState<Coaching | null>(message.coaching);
@@ -28,10 +36,19 @@ export function MessageCard({ message, notify, onReviewed }: { message: Message;
   const [coachError, setCoachError] = useState<string | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [marking, setMarking] = useState(false);
+  const [settingAside, setSettingAside] = useState(false);
   const [redoing, setRedoing] = useState(false);
   const [showRewrites, setShowRewrites] = useState(false);
   const screen = message.screen;
   const latest = attempts[attempts.length - 1];
+
+  // The original, then every try that was scored, so a rewrite can be compared with where it started.
+  const trail = [
+    ...(screen ? [{ label: "Original", value: screen.naturalness }] : []),
+    ...attempts.flatMap((a, i) => (a.screen ? [{ label: `Try ${i + 1}`, value: a.screen.naturalness }] : [])),
+  ];
+  const latestScore = latest?.screen?.naturalness;
+  const delta = screen && latestScore !== undefined ? latestScore - screen.naturalness : null;
 
   /** Reviews the latest saved version. Also what Retry runs, since the version is already saved by then. */
   const coach = async (newVersion?: string) => {
@@ -66,6 +83,18 @@ export function MessageCard({ message, notify, onReviewed }: { message: Message;
       window.setTimeout(() => setCopied(null), 1500);
     } catch (e) {
       notify("Could not copy", errorText(e));
+    }
+  };
+
+  const setExcluded = async (excluded: boolean) => {
+    setSettingAside(true);
+    try {
+      await api.setExcluded(message.id, excluded);
+      onExcluded?.();
+    } catch (e) {
+      notify(excluded ? "Could not set it aside" : "Could not put it back", errorText(e));
+    } finally {
+      setSettingAside(false);
     }
   };
 
@@ -191,6 +220,23 @@ export function MessageCard({ message, notify, onReviewed }: { message: Message;
                 </button>
               </div>
               {latest ? <p className="attempt-text">{latest.text}</p> : <p className="muted">No attempt saved.</p>}
+              {trail.length > 1 && (
+                <div className="progress">
+                  <ol className="trail" aria-label="Naturalness of each version">
+                    {trail.map((step) => (
+                      <li key={step.label}>
+                        <span className="trail-label">{step.label}</span>
+                        <Meter value={step.value} />
+                      </li>
+                    ))}
+                  </ol>
+                  {delta !== null && (
+                    <span className={`delta ${delta > 0.05 ? "up" : delta < -0.05 ? "down" : "flat"}`}>
+                      {Math.abs(delta) <= 0.05 ? "No change" : `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}`} since your original
+                    </span>
+                  )}
+                </div>
+              )}
             </motion.section>
 
             <motion.section variants={rise} className="rw-sec">
@@ -305,27 +351,53 @@ export function MessageCard({ message, notify, onReviewed }: { message: Message;
       </AnimatePresence>
 
       <footer className="card-f">
-        {message.reviewedAt !== null ? (
-          <span className="muted">Reviewed {ago(message.reviewedAt)}</span>
+        {message.excludedAt !== null ? (
+          <>
+            <span className="muted">Set aside {ago(message.excludedAt)}, so it does not count</span>
+            {onExcluded && (
+              <button type="button" className="btn btn-ghost" disabled={settingAside} onClick={() => void setExcluded(false)}>
+                <i className="ph ph-arrow-u-up-left" aria-hidden="true" />
+                Put it back
+              </button>
+            )}
+          </>
         ) : (
-          onReviewed && (
-            <button
-              type="button"
-              className={`btn btn-ghost${marking ? " is-done" : ""}`}
-              disabled={marking}
-              onClick={() => void markReviewed()}
-            >
-              <motion.i
-                key={marking ? "done" : "idle"}
-                className="ph ph-check"
-                aria-hidden="true"
-                initial={marking ? { scale: 0.3, rotate: -30 } : false}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 520, damping: 14 }}
-              />
-              {marking ? "Marking" : "Mark reviewed"}
-            </button>
-          )
+          <>
+            {onExcluded && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={settingAside}
+                title="Pasted text or file names make this read oddly: leave it out of the queue and the scores"
+                onClick={() => void setExcluded(true)}
+              >
+                <i className="ph ph-prohibit" aria-hidden="true" />
+                Not for Cadence
+              </button>
+            )}
+            {message.reviewedAt !== null ? (
+              <span className="muted">Reviewed {ago(message.reviewedAt)}</span>
+            ) : (
+              onReviewed && (
+                <button
+                  type="button"
+                  className={`btn btn-ghost${marking ? " is-done" : ""}`}
+                  disabled={marking}
+                  onClick={() => void markReviewed()}
+                >
+                  <motion.i
+                    key={marking ? "done" : "idle"}
+                    className="ph ph-check"
+                    aria-hidden="true"
+                    initial={marking ? { scale: 0.3, rotate: -30 } : false}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 520, damping: 14 }}
+                  />
+                  {marking ? "Marking" : "Mark reviewed"}
+                </button>
+              )
+            )}
+          </>
         )}
       </footer>
     </motion.article>

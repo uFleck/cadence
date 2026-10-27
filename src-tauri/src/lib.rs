@@ -81,17 +81,30 @@ async fn coach_message(core: Shared<'_>, id: String) -> Result<Coaching, String>
 }
 
 #[tauri::command]
-fn save_attempt(core: Shared<'_>, id: String, text: String) -> Result<Attempt, String> {
+async fn save_attempt(core: Shared<'_>, id: String, text: String) -> Result<Attempt, String> {
     let text = text.trim();
     if text.is_empty() {
         return Err("Write your version first".into());
     }
-    core.db.save_attempt(&id, text, now_ms()).map_err(fail)
+    let mut attempt = core.db.save_attempt(&id, text, now_ms()).map_err(fail)?;
+    // A Jev failure must not lose the attempt: it stays saved, just without a score.
+    if let Some(key) = jev::api_key() {
+        if let Ok(screen) = jev::Jev::new(key).screen(text).await {
+            core.db.save_attempt_screen(attempt.id, &screen).map_err(fail)?;
+            attempt.screen = Some(screen);
+        }
+    }
+    Ok(attempt)
 }
 
 #[tauri::command]
 fn mark_reviewed(core: Shared<'_>, id: String, reviewed: bool) -> Result<(), String> {
     core.db.mark_reviewed(&id, reviewed.then(now_ms)).map_err(fail)
+}
+
+#[tauri::command]
+fn set_excluded(core: Shared<'_>, id: String, excluded: bool) -> Result<(), String> {
+    core.db.set_excluded(&id, excluded.then(now_ms)).map_err(fail)
 }
 
 #[tauri::command]
@@ -364,6 +377,7 @@ pub fn run() {
             list_messages,
             coach_message,
             save_attempt,
+            set_excluded,
             mark_reviewed,
             patterns,
             get_settings,
