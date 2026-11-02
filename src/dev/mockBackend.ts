@@ -32,6 +32,7 @@ const coach = (issue: Issue, casual: string, professional: string, explanation: 
   ],
   explanation,
   tip,
+  assumption: "",
   issue,
   createdAt: Date.now(),
   costUsd: null,
@@ -199,6 +200,7 @@ export function installMock() {
   let cb = 1;
   let attemptSeq = 1;
   let settings: Settings = { runHour: 21, flagThreshold: 2, minWords: 4 };
+  let glossary = "";
   let keySource: KeySource = SETUP_MISSING ? "none" : "app";
   let running = false;
   let lastRun: RunInfo = {
@@ -565,6 +567,11 @@ export function installMock() {
       settings = { ...(a.settings as Settings) };
       emit("messages-changed", undefined);
       return { ...settings };
+    },
+    get_glossary: () => glossary,
+    set_glossary: (a) => {
+      glossary = String(a.glossary).trim();
+      return glossary;
     },
     typesafe_key_source: () => keySource,
     set_typesafe_key: (a) => {

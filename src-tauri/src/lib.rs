@@ -78,7 +78,8 @@ async fn coach_message(core: Shared<'_>, id: String) -> Result<Coaching, String>
     let hint = message.screen.as_ref().map(|s| s.issue);
     let goal = core.db.settings().map_err(fail)?.flag_threshold;
     let verdict = attempt.screen.as_ref().map(|s| coach::Verdict::of(s, goal));
-    let stdout = coach::ask(claude, &core.coach_dir, &message.text, &attempt.text, hint, verdict).await?;
+    let glossary = core.db.glossary().map_err(fail)?;
+    let stdout = coach::ask(claude, &core.coach_dir, &message.text, &attempt.text, hint, verdict, &glossary).await?;
     // The call is paid for even when its answer cannot be read, so the usage is recorded first.
     let usage = coach::usage_from(&stdout);
     let parsed = coach::parse_output(&stdout, hint, now_ms());
@@ -156,6 +157,19 @@ fn set_settings(core: Shared<'_>, settings: Settings) -> Result<Settings, String
     let settings = settings.clamped();
     core.db.set_settings(&settings).map_err(fail)?;
     Ok(settings)
+}
+
+#[tauri::command]
+fn get_glossary(core: Shared<'_>) -> Result<String, String> {
+    core.db.glossary().map_err(fail)
+}
+
+/// Capped so a pasted wall of text cannot bloat every coach call.
+#[tauri::command]
+fn set_glossary(core: Shared<'_>, glossary: String) -> Result<String, String> {
+    let glossary: String = glossary.trim().chars().take(2000).collect();
+    core.db.set_glossary(&glossary).map_err(fail)?;
+    Ok(glossary)
 }
 
 /// Never returns the key itself, only where it comes from.
@@ -417,6 +431,8 @@ pub fn run() {
             patterns,
             get_settings,
             set_settings,
+            get_glossary,
+            set_glossary,
             typesafe_key_source,
             set_typesafe_key,
             clear_typesafe_key,

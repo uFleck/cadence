@@ -213,6 +213,10 @@
 
 .settings.key-card { margin-top: 18px; }
 .settings.key-card .field { grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); }
+.settings.glossary-card { margin-top: 18px; }
+.settings.glossary-card .field { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.settings.glossary-card .field label { align-self: auto; }
+.settings.glossary-card .field textarea { width: 100%; min-height: 120px; resize: vertical; font: 400 15px/1.5 var(--serif); }
 .save-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 0 4px; }
 .save-row .btn { min-width: 112px; height: 40px; }
 .save-row .btn.saving:disabled { opacity: 0.85; }

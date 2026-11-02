@@ -789,6 +789,24 @@ impl Db {
         Ok(())
     }
 
+    /// The person's own work terms, one per line ("lead: a potential customer"), handed to the coach.
+    pub fn glossary(&self) -> Result<String> {
+        let stored: Option<String> = self
+            .conn()
+            .query_row("SELECT value FROM kv WHERE key = 'glossary'", [], |r| r.get(0))
+            .optional()?;
+        Ok(stored.unwrap_or_default())
+    }
+
+    pub fn set_glossary(&self, glossary: &str) -> Result<()> {
+        self.conn().execute(
+            "INSERT INTO kv (key, value) VALUES ('glossary', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [glossary],
+        )?;
+        Ok(())
+    }
+
     pub fn interview_questions(&self) -> Result<Vec<InterviewQuestion>> {
         let conn = self.conn();
         let sql = format!("{QUESTION_SELECT} GROUP BY q.id ORDER BY q.topic ASC, q.id ASC");
@@ -943,6 +961,7 @@ fn read_message(r: &Row) -> Result<Message> {
                 rewrites: serde_json::from_str::<Vec<Rewrite>>(&rewrites).unwrap_or_default(),
                 explanation: r.get(13)?,
                 tip: r.get(14)?,
+                assumption: String::new(),
                 issue: Issue::parse(&issue).unwrap_or(Issue::None),
                 created_at: r.get(16)?,
                 cost_usd: None,
@@ -1000,6 +1019,15 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         Db::open(&dir.join("t.db")).unwrap()
+    }
+
+    #[test]
+    fn the_glossary_starts_empty_and_keeps_what_was_saved() {
+        let db = open("glossary");
+        assert_eq!(db.glossary().unwrap(), "");
+        db.set_glossary("lead: a potential customer").unwrap();
+        db.set_glossary("lead: a potential customer\nreferral: someone invited").unwrap();
+        assert_eq!(db.glossary().unwrap(), "lead: a potential customer\nreferral: someone invited");
     }
 
     fn message(id: &str) -> NewMessage {
@@ -1118,7 +1146,7 @@ mod tests {
     }
 
     fn review(tip: &str, cost: Option<f64>) -> Coaching {
-        Coaching { rewrites: vec![], explanation: String::new(), tip: tip.into(), issue: Issue::Grammar, created_at: 9, cost_usd: cost }
+        Coaching { rewrites: vec![], explanation: String::new(), tip: tip.into(), assumption: String::new(), issue: Issue::Grammar, created_at: 9, cost_usd: cost }
     }
 
     #[test]
@@ -1376,6 +1404,7 @@ mod tests {
             rewrites: vec![],
             explanation: String::new(),
             tip: String::new(),
+            assumption: String::new(),
             issue: Issue::Grammar,
             created_at,
             cost_usd: None,
@@ -1450,7 +1479,7 @@ mod tests {
         db.save_screen("x", &screen(0.95, 0.9, 1.2), "t", 1).unwrap();
         db.save_coaching(
             "x",
-            &Coaching { rewrites: vec![], explanation: String::new(), tip: String::new(), issue: Issue::Grammar, created_at: 1, cost_usd: None },
+            &Coaching { rewrites: vec![], explanation: String::new(), tip: String::new(), assumption: String::new(), issue: Issue::Grammar, created_at: 1, cost_usd: None },
         )
         .unwrap();
         db.save_attempt("x", "my attempt", 1).unwrap();

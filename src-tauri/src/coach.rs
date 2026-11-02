@@ -21,7 +21,10 @@ You get one message they wrote, the new version they wrote after reading it agai
 Review their new version, not the original: say what still sounds off in it, and if it already sounds natural, say so and say what they improved. \
 The message may also carry the verdict of an automatic naturalness screen (Jev) on the new version: it is the judge, so never contradict it. \
 When the version passed, say it sounds natural and what they improved over the original, and do not list optional polish (capital letters, a synonym you would prefer, a different style). \
-When it fell short, explain what holds it back, starting from the issue the screen named. Do not quote the score: the app already shows it. \
+When it fell short, explain what holds it back, starting from the issue the screen named. If that issue does not match what they wrote, say what you actually see instead of forcing it. Do not quote the score: the app already shows it. \
+Before you correct a word, check whether it is a noun or a work term in that sentence. 'lead' is a potential customer, 'referral' someone who was invited, 'tester' a role, 'signup' the act of registering, and none of them is a verb form. \
+Never correct a word into one that changes what they meant. If a word has two readings, take the one that makes sense at work, and in 'assumption' say which reading you took. If you cannot tell, name both readings and what the fix is for each. \
+When a term list comes with the message, those words are the person's own jargon: use them as defined and never correct them. \
 Keep their meaning and level of detail. Do not add content. Do not make it more formal than needed. \
 If the new version already sounds natural, make the rewrites small variations. \
 File names such as Program.cs and site names such as github.com stand in for full paths and links that were shortened on purpose: keep the names as they are in the rewrites and do not comment on them. \
@@ -60,12 +63,13 @@ fn schema() -> Value {
             },
             "explanation": { "type": "string" },
             "tip": { "type": "string" },
+            "assumption": { "type": "string" },
             "issue": {
                 "type": "string",
                 "enum": ["none", "grammar", "preposition_collocation", "word_choice", "word_order", "pt_calque", "register"]
             }
         },
-        "required": ["rewrites", "explanation", "tip", "issue"]
+        "required": ["rewrites", "explanation", "tip", "assumption", "issue"]
     })
 }
 
@@ -104,18 +108,26 @@ impl Verdict {
     }
 }
 
-fn user_prompt(original: &str, attempt: &str, hint: Option<Issue>, verdict: Option<Verdict>) -> String {
+fn user_prompt(original: &str, attempt: &str, hint: Option<Issue>, verdict: Option<Verdict>, glossary: &str) -> String {
     let hint = match hint {
         Some(Issue::None) | None => "none".to_string(),
         Some(i) => i.key().to_string(),
     };
     let verdict = verdict.map(|v| format!("{}\n\n", v.describe())).unwrap_or_default();
+    let glossary = glossary.trim();
+    let glossary = if glossary.is_empty() {
+        String::new()
+    } else {
+        format!("The person's own terms (work jargon, use them as defined and never correct them):\n{glossary}\n\n")
+    };
     format!(
         "Original message:\n\"\"\"\n{original}\n\"\"\"\n\nTheir new version:\n\"\"\"\n{attempt}\n\"\"\"\n\n\
-         Hint from an automatic screen of the original (may be wrong): {hint}\n\n{verdict}\
+         Hint from an automatic screen of the original (may be wrong): {hint}\n\n{verdict}{glossary}\
          Return two rewrites of their new version, one casual (how you would say it in a chat with a teammate) and one \
          professional (for a manager or client). Then a short explanation of what still sounds off in the new version, \
-         or why it sounds natural (two or three sentences), one reusable tip to remember, and the main issue of the original."
+         or why it sounds natural (two or three sentences), one reusable tip to remember, the main issue of the original, \
+         and the assumption: one short sentence saying how you read any word that could mean two things \
+         (for example 'I read lead as a potential customer'), or an empty string when nothing was ambiguous."
     )
 }
 
@@ -124,6 +136,8 @@ struct Coached {
     rewrites: Vec<Rewrite>,
     explanation: String,
     tip: String,
+    #[serde(default)]
+    assumption: String,
     issue: String,
 }
 
@@ -166,6 +180,7 @@ pub fn parse_output(stdout: &str, hint: Option<Issue>, now: i64) -> Result<Coach
         rewrites: coached.rewrites.into_iter().map(|r| Rewrite { text: clean(r.text), ..r }).collect(),
         explanation: clean(coached.explanation),
         tip: clean(coached.tip),
+        assumption: clean(coached.assumption),
         issue: Issue::parse(&coached.issue).or(hint).unwrap_or(Issue::None),
         created_at: now,
         cost_usd: None,
@@ -209,8 +224,9 @@ pub async fn ask(
     attempt: &str,
     hint: Option<Issue>,
     verdict: Option<Verdict>,
+    glossary: &str,
 ) -> Result<String, String> {
-    run_claude(claude, cwd, SYSTEM_PROMPT, &schema(), &user_prompt(original, attempt, hint, verdict)).await
+    run_claude(claude, cwd, SYSTEM_PROMPT, &schema(), &user_prompt(original, attempt, hint, verdict, glossary)).await
 }
 
 /// Runs one `claude -p` call (no tools, no settings, no session) and returns its stdout envelope.
@@ -286,16 +302,37 @@ mod tests {
 
     #[test]
     fn the_prompt_carries_both_the_original_and_the_new_version() {
-        let p = user_prompt("take this", "look at this", None, None);
+        let p = user_prompt("take this", "look at this", None, None, "");
         assert!(p.contains("take this") && p.contains("look at this"));
-        assert!(!p.contains("Verdict"));
+        assert!(!p.contains("Verdict") && !p.contains("own terms"));
+    }
+
+    #[test]
+    fn the_prompt_carries_the_persons_glossary() {
+        let p = user_prompt("a", "b", None, None, "  lead: a potential customer\n");
+        assert!(p.contains("own terms") && p.contains("lead: a potential customer"));
+        assert!(user_prompt("a", "b", None, None, "   \n").find("own terms").is_none());
+    }
+
+    #[test]
+    fn the_prompt_asks_for_the_reading_taken_of_an_ambiguous_word() {
+        assert!(user_prompt("a", "b", None, None, "").contains("assumption"));
+        assert!(SYSTEM_PROMPT.contains("noun or a work term"));
+        assert!(schema()["required"].as_array().unwrap().iter().any(|k| k == "assumption"));
+    }
+
+    #[test]
+    fn the_assumption_is_kept_and_defaults_to_empty() {
+        let with = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"x"}],"explanation":"e","tip":"t","assumption":"I read 'lead' as a potential customer","issue":"grammar"}}"#;
+        assert_eq!(parse_output(with, None, 0).unwrap().assumption, "I read 'lead' as a potential customer");
+        assert_eq!(parse_output(REAL, None, 0).unwrap().assumption, "");
     }
 
     #[test]
     fn the_prompt_carries_jevs_verdict_on_the_new_version() {
-        let passed = user_prompt("a", "b", None, Some(Verdict { score: 3.0, goal: 2.0, issue: Issue::None }));
+        let passed = user_prompt("a", "b", None, Some(Verdict { score: 3.0, goal: 2.0, issue: Issue::None }), "");
         assert!(passed.contains("3.0 out of 3") && passed.contains("PASSED"));
-        let short = user_prompt("a", "b", None, Some(Verdict { score: 1.2, goal: 2.0, issue: Issue::PtCalque }));
+        let short = user_prompt("a", "b", None, Some(Verdict { score: 1.2, goal: 2.0, issue: Issue::PtCalque }), "");
         assert!(short.contains("FELL SHORT") && short.contains("pt_calque"));
     }
 

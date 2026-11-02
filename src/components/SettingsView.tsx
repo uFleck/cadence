@@ -3,6 +3,7 @@ import { AnimatePresence, motion, type Variants } from "motion/react";
 import { api, type Settings } from "../api";
 import { EASE, rise, stagger } from "../motion";
 import { errorText, type Notify } from "./shared";
+import { Glossary } from "./Glossary";
 import { TypeSafeKey } from "./TypeSafeKey";
 import "../styles/patterns.css";
 
@@ -173,6 +174,7 @@ export function SettingsView({ notify, onSaved }: { notify: Notify; onSaved: () 
         </div>
       </motion.div>
     </motion.form>
+    <Glossary notify={notify} />
     <TypeSafeKey notify={notify} onChanged={onSaved} />
     </>
   );

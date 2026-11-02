@@ -49,6 +49,8 @@ export interface Coaching {
   explanation: string;
   /** One reusable rule or phrase to remember. */
   tip: string;
+  /** How the coach read a word that could mean two things ("I read 'lead' as a potential customer"). Empty when nothing was ambiguous, and for older coaching. */
+  assumption: string;
   issue: Issue;
   /** Epoch ms */
   createdAt: number;
@@ -339,6 +341,9 @@ export const api = {
   patterns: () => invoke<Patterns>("patterns"),
   getSettings: () => invoke<Settings>("get_settings"),
   setSettings: (settings: Settings) => invoke<Settings>("set_settings", { settings }),
+  /** The person's own work terms, one per line, which the coach reads as defined instead of correcting them. */
+  getGlossary: () => invoke<string>("get_glossary"),
+  setGlossary: (glossary: string) => invoke<string>("set_glossary", { glossary }),
   /** The key itself never reaches the UI, only where it comes from. */
   typesafeKeySource: () => invoke<KeySource>("typesafe_key_source"),
   /** Stores the key in the OS credential store. */

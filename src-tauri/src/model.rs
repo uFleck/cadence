@@ -173,6 +173,10 @@ pub struct Coaching {
     pub rewrites: Vec<Rewrite>,
     pub explanation: String,
     pub tip: String,
+    /// How the coach read a word that could mean two things ("I read 'lead' as a potential customer").
+    /// Empty when nothing was ambiguous, and for coaching saved before this existed.
+    #[serde(default)]
+    pub assumption: String,
     pub issue: Issue,
     pub created_at: i64,
     /// What the `claude -p` call that wrote this coaching cost, in USD. None for coaching saved before
