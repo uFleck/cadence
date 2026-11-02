@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ISSUE_LABEL, type Issue } from "../api";
+import { ISSUE_LABEL, type Issue, type Message, type Screen } from "../api";
 import { EASE } from "../motion";
 
 export type Notify = (title: string, lead: string) => void;
@@ -23,6 +23,28 @@ export function ago(ts: number) {
 }
 
 export const when = (ts: number) => new Date(ts).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+
+/** How the message sounds now: its latest version when that was scored, else the original (null if neither was). */
+export function currentScore(m: Message): number | null {
+  const latest = m.attempts[m.attempts.length - 1];
+  return latest?.screen?.naturalness ?? m.screen?.naturalness ?? null;
+}
+
+/** Jev gives the same text a slightly different score from call to call; a smaller gap is no change. */
+export const SAME_SCORE = 0.1;
+
+/** How far `after` moved from `before`: 0 inside `SAME_SCORE`, null when the two were scored under different rubrics. */
+export function scoreChange(before: Screen, after: Screen): number | null {
+  if (before.rubric !== after.rubric) return null;
+  const d = after.naturalness - before.naturalness;
+  return Math.abs(d) < SAME_SCORE ? 0 : d;
+}
+
+/** US dollars with enough decimals for a call that costs a fraction of a cent. */
+export function usd(v: number) {
+  const digits = v === 0 ? 2 : v < 0.01 ? 4 : v < 1 ? 3 : 2;
+  return `$${v.toFixed(digits)}`;
+}
 
 const TONE_WORD = { low: "Needs work", mid: "Fair", high: "Natural" } as const;
 

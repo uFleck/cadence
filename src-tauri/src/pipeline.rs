@@ -1,5 +1,5 @@
 use crate::db::Db;
-use crate::model::{RunPhase, RunProgress};
+use crate::model::{RunPhase, RunProgress, UsageKind};
 use crate::{ingest, jev, schedule};
 use chrono::Local;
 use std::path::PathBuf;
@@ -78,16 +78,17 @@ async fn steps(core: &Arc<Core>, app: &AppHandle) -> Result<Summary, String> {
             .iter()
             .map(|(id, text)| {
                 let (jev, id, text) = (jev.clone(), id.clone(), text.clone());
-                tauri::async_runtime::spawn(async move { (id, jev.screen(&text).await) })
+                tauri::async_runtime::spawn(async move { (id, jev::usage(&text), jev.screen(&text).await) })
             })
             .collect();
         for handle in handles {
             match handle.await {
-                Ok((id, Ok(screen))) => {
+                Ok((id, usage, Ok(screen))) => {
                     core.db.save_screen(&id, &screen, "jev-latest", now_ms()).map_err(|e| e.to_string())?;
+                    let _ = core.db.record_usage(UsageKind::Screen, Some(&id), None, &usage, true, now_ms());
                     screened += 1;
                 }
-                Ok((_, Err(e))) => {
+                Ok((_, _, Err(e))) => {
                     if e.contains("401") {
                         return Err(format!("TypeSafe rejected the API key: {e}"));
                     }

@@ -1,9 +1,10 @@
 import { AnimatePresence, motion, type Variants } from "motion/react";
 import { useState } from "react";
 import { api, type Attempt, type Coaching, type Message } from "../api";
+import { loadDraft, storeDraft } from "../drafts";
 import { EASE, rise, stagger } from "../motion";
 import "../styles/messages.css";
-import { ago, errorText, IssueChip, Meter, type Notify } from "./shared";
+import { ago, errorText, IssueChip, Meter, scoreChange, usd, type Notify } from "./shared";
 
 // The "Remember" callout slides in from the side, after the sections above it have landed.
 const slideIn: Variants = {
@@ -21,26 +22,99 @@ const expand = {
 const REGISTER_ICON = { casual: "ph-chat-teardrop", professional: "ph-briefcase" } as const;
 
 type CardProps = {
+  /** The parent owns the message: the card shows what it is given and reports every change through `onChange`. */
   message: Message;
   notify: Notify;
+  /** Called with the message as stored after a version was saved or reviewed, so reopening the card shows it. */
+  onChange: (message: Message) => void;
   onReviewed?: () => void;
   /** Called after the message was set aside or put back, so the list can drop or reload it. */
   onExcluded?: () => void;
 };
 
-export function MessageCard({ message, notify, onReviewed, onExcluded }: CardProps) {
-  const [draft, setDraft] = useState("");
-  const [attempts, setAttempts] = useState<Attempt[]>(message.attempts);
-  const [coaching, setCoaching] = useState<Coaching | null>(message.coaching);
+/** What a review cost, at Claude's list prices. Renders nothing for a review saved before costs were tracked. */
+function CostChip({ coaching }: { coaching: Coaching }) {
+  if (coaching.costUsd === null) return null;
+  return (
+    <span className="cost-chip" title="What this review cost at Claude's list prices. On a subscription you are not charged this amount.">
+      <i className="ph ph-coins" aria-hidden="true" />
+      {usd(coaching.costUsd)}
+    </span>
+  );
+}
+
+/** The versions the user already wrote, newest first, each with its score and what the coach said about it. */
+function VersionHistory({ attempts, defaultOpen }: { attempts: Attempt[]; defaultOpen: boolean }) {
+  if (attempts.length === 0) return null;
+  return (
+    <details className="versions" open={defaultOpen}>
+      <summary>
+        <i className="ph ph-clock-counter-clockwise" aria-hidden="true" />
+        Earlier versions
+        <span className="count-pill">{attempts.length}</span>
+      </summary>
+      <ol className="ver-list">
+        {attempts
+          .map((a, i) => ({ a, n: i + 1 }))
+          .reverse()
+          .map(({ a, n }) => (
+            <li key={a.id} className="ver">
+              <div className="ver-top">
+                <span className="trail-label">Try {n}</span>
+                <span className="muted" title={new Date(a.createdAt).toLocaleString()}>
+                  {ago(a.createdAt)}
+                </span>
+                {a.screen && <Meter value={a.screen.naturalness} />}
+              </div>
+              <p className="attempt-text">{a.text}</p>
+              {a.coaching ? (
+                <details className="ver-coach">
+                  <summary>
+                    What the coach said
+                    <CostChip coaching={a.coaching} />
+                  </summary>
+                  <p>{a.coaching.explanation}</p>
+                  <ul>
+                    {a.coaching.rewrites.map((r, i) => (
+                      <li key={i}>
+                        <span className={`reg ${r.register}`}>{r.register}</span> {r.text}
+                      </li>
+                    ))}
+                  </ul>
+                  <p>
+                    <strong>Remember</strong> {a.coaching.tip}
+                  </p>
+                </details>
+              ) : (
+                <span className="muted">Not reviewed</span>
+              )}
+            </li>
+          ))}
+      </ol>
+    </details>
+  );
+}
+
+export function MessageCard({ message, notify, onChange, onReviewed, onExcluded }: CardProps) {
+  const [draft, setDraftText] = useState(() => loadDraft(message.id));
   const [busy, setBusy] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [marking, setMarking] = useState(false);
   const [settingAside, setSettingAside] = useState(false);
-  const [redoing, setRedoing] = useState(false);
+  // A draft left behind on an already reviewed message means the user was in the middle of trying again.
+  const [redoing, setRedoing] = useState(() => loadDraft(message.id).trim() !== "");
   const [showRewrites, setShowRewrites] = useState(false);
   const screen = message.screen;
+  const attempts = message.attempts;
+  const coaching = message.coaching;
   const latest = attempts[attempts.length - 1];
+
+  const setDraft = (text: string) => {
+    setDraftText(text);
+    storeDraft(message.id, text);
+  };
+  const refresh = async () => onChange(await api.getMessage(message.id));
 
   // The original, then every try that was scored, so a rewrite can be compared with where it started.
   const trail = [
@@ -48,7 +122,7 @@ export function MessageCard({ message, notify, onReviewed, onExcluded }: CardPro
     ...attempts.flatMap((a, i) => (a.screen ? [{ label: `Try ${i + 1}`, value: a.screen.naturalness }] : [])),
   ];
   const latestScore = latest?.screen?.naturalness;
-  const delta = screen && latestScore !== undefined ? latestScore - screen.naturalness : null;
+  const delta = screen && latest?.screen ? scoreChange(screen, latest.screen) : null;
 
   /** Reviews the latest saved version. Also what Retry runs, since the version is already saved by then. */
   const coach = async (newVersion?: string) => {
@@ -56,11 +130,13 @@ export function MessageCard({ message, notify, onReviewed, onExcluded }: CardPro
     setCoachError(null);
     try {
       if (newVersion) {
-        const saved = await api.saveAttempt(message.id, newVersion);
-        setAttempts((list) => [...list, saved]);
+        await api.saveAttempt(message.id, newVersion);
         setDraft("");
+        // Show the saved version at once: if the review below fails it is still there, with a way to retry.
+        await refresh();
       }
-      setCoaching(await api.coachMessage(message.id));
+      await api.coachMessage(message.id);
+      await refresh();
       setShowRewrites(false);
       setRedoing(false);
     } catch (e) {
@@ -72,7 +148,6 @@ export function MessageCard({ message, notify, onReviewed, onExcluded }: CardPro
 
   const tryAgain = () => {
     setCoachError(null);
-    setDraft("");
     setRedoing(true);
   };
 
@@ -146,7 +221,7 @@ export function MessageCard({ message, notify, onReviewed, onExcluded }: CardPro
             exit={{ opacity: 0, y: -8, transition: { duration: 0.16 } }}
             transition={{ duration: 0.3, ease: EASE }}
           >
-            <label htmlFor={`draft-${message.id}`}>Say it your way</label>
+            <label htmlFor={`draft-${message.id}`}>{attempts.length > 0 ? "Try it again" : "Say it your way"}</label>
             <textarea
               id={`draft-${message.id}`}
               rows={3}
@@ -160,12 +235,24 @@ export function MessageCard({ message, notify, onReviewed, onExcluded }: CardPro
                 <i className={busy ? "ph ph-spinner spin" : "ph ph-sparkle"} aria-hidden="true" />
                 {busy ? "Coaching" : "Show suggestions"}
               </button>
-              {redoing && (
+              {redoing && coaching && (
                 <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setRedoing(false)}>
                   Cancel
                 </button>
               )}
             </div>
+
+            {latest && !coaching && !busy && !coachError && (
+              <div className="pending-note" role="status">
+                <i className="ph ph-clock-countdown" aria-hidden="true" />
+                <span>Your last version is saved, but it was not reviewed yet.</span>
+                <button type="button" className="btn btn-ghost sm" onClick={() => void coach()}>
+                  Review it
+                </button>
+              </div>
+            )}
+
+            <VersionHistory attempts={attempts} defaultOpen />
 
             <AnimatePresence initial={false}>
               {busy && (
@@ -231,10 +318,21 @@ export function MessageCard({ message, notify, onReviewed, onExcluded }: CardPro
                     ))}
                   </ol>
                   {delta !== null && (
-                    <span className={`delta ${delta > 0.05 ? "up" : delta < -0.05 ? "down" : "flat"}`}>
-                      {Math.abs(delta) <= 0.05 ? "No change" : `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}`} since your original
+                    <span className={`delta ${delta > 0 ? "up" : delta < 0 ? "down" : "flat"}`}>
+                      {delta === 0 ? "No change" : `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}`} since your original
                     </span>
                   )}
+                </div>
+              )}
+              {latestScore !== undefined && message.reviewedAt === null && message.excludedAt === null && (
+                <p className="stays-note">
+                  <i className="ph ph-arrow-bend-up-left" aria-hidden="true" />
+                  This version scored {latestScore.toFixed(1)}, below your goal, so the message stays in your queue.
+                </p>
+              )}
+              {attempts.length > 1 && (
+                <div className="ver-wrap">
+                  <VersionHistory attempts={attempts.slice(0, -1)} defaultOpen={false} />
                 </div>
               )}
             </motion.section>
@@ -329,7 +427,10 @@ export function MessageCard({ message, notify, onReviewed, onExcluded }: CardPro
             </motion.section>
 
             <motion.section variants={rise} className="why">
-              <h3>About your version</h3>
+              <div className="sect-h">
+                <h3>About your version</h3>
+                <CostChip coaching={coaching} />
+              </div>
               <p>{coaching.explanation}</p>
             </motion.section>
 
@@ -383,6 +484,7 @@ export function MessageCard({ message, notify, onReviewed, onExcluded }: CardPro
                   type="button"
                   className={`btn btn-ghost${marking ? " is-done" : ""}`}
                   disabled={marking}
+                  title={latestScore !== undefined ? "Take it out of the queue although the last version is below your goal" : undefined}
                   onClick={() => void markReviewed()}
                 >
                   <motion.i
@@ -393,7 +495,7 @@ export function MessageCard({ message, notify, onReviewed, onExcluded }: CardPro
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 520, damping: 14 }}
                   />
-                  {marking ? "Marking" : "Mark reviewed"}
+                  {marking ? "Marking" : latestScore !== undefined ? "Done anyway" : "Mark reviewed"}
                 </button>
               )
             )}

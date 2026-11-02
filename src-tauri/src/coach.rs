@@ -1,4 +1,4 @@
-use crate::model::{Coaching, Issue, Rewrite};
+use crate::model::{Coaching, Issue, Rewrite, Usage};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
@@ -14,6 +14,9 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 const SYSTEM_PROMPT: &str = "You are an English writing coach for a software engineer whose first language is Brazilian Portuguese. \
 They want to sound natural when talking to colleagues and senior people at work. \
+Every message is a prompt they typed to a coding agent (Claude Code) while working, not a formal email. \
+In that chat a missing final period, a lowercase first letter and short imperatives are normal: never mention them. \
+A tool, command or package name that is also an English word (just, make, go, node) is fine when it is in quotes or backticks. \
 You get one message they wrote, the new version they wrote after reading it again, and a hint about what may sound off in the original. \
 Review their new version, not the original: say what still sounds off in it, and if it already sounds natural, say so and say what they improved. \
 Keep their meaning and level of detail. Do not add content. Do not make it more formal than needed. \
@@ -114,7 +117,7 @@ fn clean(s: String) -> String {
     s.replace("\\\"", "\"")
 }
 
-fn parse_output(stdout: &str, hint: Option<Issue>, now: i64) -> Result<Coaching, String> {
+pub fn parse_output(stdout: &str, hint: Option<Issue>, now: i64) -> Result<Coaching, String> {
     let payload = extract_payload(stdout)?;
     let coached: Coached = serde_json::from_value(payload).map_err(|e| format!("coaching has the wrong shape: {e}"))?;
     if coached.rewrites.is_empty() {
@@ -126,15 +129,42 @@ fn parse_output(stdout: &str, hint: Option<Issue>, now: i64) -> Result<Coaching,
         tip: clean(coached.tip),
         issue: Issue::parse(&coached.issue).or(hint).unwrap_or(Issue::None),
         created_at: now,
+        cost_usd: None,
     })
 }
 
-/// Asks Claude Code (the user's own login) to review the user's new version of a message: rewrites and an
-/// explanation. `cwd` must be a folder that ingestion skips, so the call does not end up in the user's
-/// practice material.
-pub async fn coach(claude: &Path, cwd: &Path, original: &str, attempt: &str, hint: Option<Issue>, now: i64) -> Result<Coaching, String> {
-    let stdout = run_claude(claude, cwd, SYSTEM_PROMPT, &schema(), &user_prompt(original, attempt, hint)).await?;
-    parse_output(&stdout, hint, now)
+/// What the call used, read from the envelope. A call that fails to parse still cost money, so this
+/// never fails: whatever is missing counts as zero or None. The model is the one that cost the most
+/// (the CLI sometimes adds a small helper call on another model).
+pub fn usage_from(stdout: &str) -> Usage {
+    let Ok(envelope) = serde_json::from_str::<Value>(stdout.trim()) else { return Usage::default() };
+    let tokens = |v: &Value, key: &str| v.get(key).and_then(Value::as_i64).unwrap_or(0);
+    let usage = envelope.get("usage").cloned().unwrap_or(Value::Null);
+    let model = envelope
+        .get("modelUsage")
+        .and_then(Value::as_object)
+        .and_then(|m| {
+            let cost = |v: &Value| v.get("costUSD").and_then(Value::as_f64).unwrap_or(0.0);
+            m.iter().max_by(|a, b| cost(a.1).total_cmp(&cost(b.1)))
+        })
+        .map(|(name, _)| name.clone())
+        .unwrap_or_default();
+    Usage {
+        model,
+        input_tokens: tokens(&usage, "input_tokens"),
+        output_tokens: tokens(&usage, "output_tokens"),
+        cache_read_tokens: tokens(&usage, "cache_read_input_tokens"),
+        cache_write_tokens: tokens(&usage, "cache_creation_input_tokens"),
+        cost_usd: envelope.get("total_cost_usd").and_then(Value::as_f64),
+        duration_ms: envelope.get("duration_ms").and_then(Value::as_i64).unwrap_or(0),
+    }
+}
+
+/// Asks Claude Code (the user's own login) to review the user's new version of a message and returns the
+/// raw envelope: the caller records its usage, then parses it with `parse_output`. `cwd` must be a folder
+/// that ingestion skips, so the call does not end up in the user's practice material.
+pub async fn ask(claude: &Path, cwd: &Path, original: &str, attempt: &str, hint: Option<Issue>) -> Result<String, String> {
+    run_claude(claude, cwd, SYSTEM_PROMPT, &schema(), &user_prompt(original, attempt, hint)).await
 }
 
 /// Runs one `claude -p` call (no tools, no settings, no session) and returns its stdout envelope.
@@ -212,6 +242,25 @@ mod tests {
     fn the_prompt_carries_both_the_original_and_the_new_version() {
         let p = user_prompt("take this", "look at this", None);
         assert!(p.contains("take this") && p.contains("look at this"));
+    }
+
+    #[test]
+    fn reads_cost_and_tokens_from_the_envelope_and_picks_the_main_model() {
+        let env = r#"{"is_error":false,"result":"x","duration_ms":1608,"total_cost_usd":0.0026443,
+            "usage":{"input_tokens":2,"cache_creation_input_tokens":619,"cache_read_input_tokens":7,"output_tokens":4},
+            "modelUsage":{"claude-haiku-5-5":{"outputTokens":14,"costUSD":0.0001243},"claude-sonnet-5-5":{"outputTokens":4,"cacheCreationInputTokens":619,"costUSD":0.00252}}}"#;
+        let u = usage_from(env);
+        assert_eq!((u.input_tokens, u.output_tokens, u.cache_read_tokens, u.cache_write_tokens), (2, 4, 7, 619));
+        assert_eq!(u.cost_usd, Some(0.0026443));
+        assert_eq!(u.duration_ms, 1608);
+        assert_eq!(u.model, "claude-sonnet-5-5");
+    }
+
+    #[test]
+    fn an_envelope_without_usage_counts_as_nothing_instead_of_failing() {
+        let u = usage_from(REAL);
+        assert_eq!((u.input_tokens, u.cost_usd), (0, None));
+        assert_eq!(usage_from("not json").cost_usd, None);
     }
 
     #[test]

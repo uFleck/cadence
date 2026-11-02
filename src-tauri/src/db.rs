@@ -1,7 +1,8 @@
 use crate::interview;
 use crate::model::{
     InterviewAnswer, InterviewFeedback, InterviewQuestion, InterviewTopic, Attempt, CoachedImpact, Coaching, Issue, IssueWeekRow, WeekRow, Message, MessageFilter, MessageQuery, Overview, PatternRow, Patterns,
-    NewMessage, RunInfo, Rewrite, Screen, Settings, TrendRow, MIN_ENGLISH, MIN_PROSE,
+    NewMessage, RunInfo, Rewrite, Screen, Settings, TrendRow, MIN_ENGLISH, MIN_PROSE, RUBRIC,
+    DayCost, KindCost, Spending, Usage, UsageCall, UsageKind, UsageTotals,
 };
 use crate::redact::{self, redact};
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -29,7 +30,9 @@ CREATE TABLE IF NOT EXISTS screens (
     issue TEXT NOT NULL,
     issue_confidence REAL NOT NULL,
     model TEXT NOT NULL,
-    screened_at INTEGER NOT NULL
+    screened_at INTEGER NOT NULL,
+    native REAL,
+    rubric INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS coaching (
     message_id TEXT PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
@@ -78,6 +81,22 @@ CREATE TABLE IF NOT EXISTS interview_answers (
     feedback TEXT
 );
 CREATE INDEX IF NOT EXISTS interview_answers_question ON interview_answers(question_id);
+CREATE TABLE IF NOT EXISTS ai_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    message_id TEXT,
+    answer_id INTEGER,
+    model TEXT NOT NULL,
+    input_tokens INTEGER NOT NULL,
+    output_tokens INTEGER NOT NULL,
+    cache_read_tokens INTEGER NOT NULL,
+    cache_write_tokens INTEGER NOT NULL,
+    cost_usd REAL,
+    duration_ms INTEGER NOT NULL,
+    ok INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ai_usage_at ON ai_usage(at);
 ";
 
 const QUESTION_SELECT: &str = "
@@ -89,7 +108,7 @@ LEFT JOIN interview_answers a ON a.question_id = q.id
 const MESSAGE_SELECT: &str = "
 SELECT m.id, m.text, m.ts, m.project, m.words, m.source, m.reviewed_at,
        s.english, s.naturalness, s.confidence, s.issue, s.issue_confidence,
-       c.rewrites, c.explanation, c.tip, c.issue, c.created_at, s.prose, m.excluded_at
+       c.rewrites, c.explanation, c.tip, c.issue, c.created_at, s.prose, m.excluded_at, s.native, s.rubric
 FROM messages m
 LEFT JOIN screens s ON s.message_id = m.id
 LEFT JOIN coaching c ON c.message_id = m.id
@@ -223,6 +242,13 @@ impl Db {
         if !has_prose {
             conn.execute("ALTER TABLE screens ADD COLUMN prose REAL", [])?;
         }
+        let has_rubric = conn
+            .prepare("SELECT 1 FROM pragma_table_info('screens') WHERE name = 'rubric'")?
+            .exists([])?;
+        if !has_rubric {
+            conn.execute("ALTER TABLE screens ADD COLUMN native REAL", [])?;
+            conn.execute("ALTER TABLE screens ADD COLUMN rubric INTEGER NOT NULL DEFAULT 0", [])?;
+        }
         let has_excluded = conn
             .prepare("SELECT 1 FROM pragma_table_info('messages') WHERE name = 'excluded_at'")?
             .exists([])?;
@@ -234,6 +260,22 @@ impl Db {
             .exists([])?;
         if !has_attempt_screen {
             conn.execute("ALTER TABLE attempts ADD COLUMN screen TEXT", [])?;
+        }
+        let has_attempt_coaching = conn
+            .prepare("SELECT 1 FROM pragma_table_info('attempts') WHERE name = 'coaching'")?
+            .exists([])?;
+        if !has_attempt_coaching {
+            conn.execute("ALTER TABLE attempts ADD COLUMN coaching TEXT", [])?;
+            // Until now a message had one coaching, the review of its latest version: hand it to that attempt.
+            conn.execute(
+                "UPDATE attempts SET coaching = (
+                     SELECT json_object('rewrites', json(c.rewrites), 'explanation', c.explanation, 'tip', c.tip,
+                                        'issue', c.issue, 'createdAt', c.created_at)
+                     FROM coaching c WHERE c.message_id = attempts.message_id)
+                 WHERE id = (SELECT MAX(a.id) FROM attempts a WHERE a.message_id = attempts.message_id)
+                   AND EXISTS (SELECT 1 FROM coaching c WHERE c.message_id = attempts.message_id AND c.created_at >= attempts.created_at)",
+                [],
+            )?;
         }
         redact_stored(&conn)?;
         reread_sources_after_redaction_change(&conn)?;
@@ -292,18 +334,21 @@ impl Db {
         let mut stmt = conn.prepare(
             "SELECT m.id, m.text FROM messages m
              WHERE m.words >= ?1 AND m.excluded_at IS NULL
-               AND NOT EXISTS (SELECT 1 FROM screens s WHERE s.message_id = m.id AND s.prose IS NOT NULL)
+               AND NOT EXISTS (
+                   SELECT 1 FROM screens s WHERE s.message_id = m.id AND s.prose IS NOT NULL
+                     -- A rewritten message's original is compared with its new versions, so it follows the rubric.
+                     AND (s.rubric >= ?3 OR NOT EXISTS (SELECT 1 FROM attempts a WHERE a.message_id = m.id)))
              ORDER BY m.ts DESC LIMIT ?2",
         )?;
-        let rows = stmt.query_map(params![min_words, limit], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        let rows = stmt.query_map(params![min_words, limit, RUBRIC], |r| Ok((r.get(0)?, r.get(1)?)))?;
         rows.collect()
     }
 
     pub fn save_screen(&self, id: &str, screen: &Screen, model: &str, now: i64) -> Result<()> {
         self.conn().execute(
             "INSERT OR REPLACE INTO screens
-             (message_id, english, prose, naturalness, confidence, issue, issue_confidence, model, screened_at)
-             VALUES (?1, ?2, ?9, ?3, ?4, ?5, ?6, ?7, ?8)",
+             (message_id, english, prose, naturalness, confidence, issue, issue_confidence, model, screened_at, native, rubric)
+             VALUES (?1, ?2, ?9, ?3, ?4, ?5, ?6, ?7, ?8, ?10, ?11)",
             params![
                 id,
                 screen.english,
@@ -313,7 +358,9 @@ impl Db {
                 screen.issue_confidence,
                 model,
                 now,
-                screen.prose
+                screen.prose,
+                screen.native,
+                screen.rubric
             ],
         )?;
         Ok(())
@@ -326,8 +373,12 @@ impl Db {
         let mut messages = match query.filter {
             MessageFilter::Queue => {
                 let queue = queue_where();
+                // Worst first by how it sounds now: a message that was rewritten counts by its latest version.
                 let sql = format!(
-                    "{MESSAGE_SELECT} WHERE {queue} ORDER BY s.naturalness ASC, m.ts DESC LIMIT ?3 OFFSET ?4"
+                    "{MESSAGE_SELECT} WHERE {queue}
+                     ORDER BY COALESCE((SELECT json_extract(a.screen, '$.naturalness') FROM attempts a
+                                        WHERE a.message_id = m.id ORDER BY a.id DESC LIMIT 1), s.naturalness) ASC, m.ts DESC
+                     LIMIT ?3 OFFSET ?4"
                 );
                 let mut stmt = conn.prepare(&sql)?;
                 let rows = stmt.query_map(
@@ -340,6 +391,15 @@ impl Db {
                 let sql = format!(
                     "{MESSAGE_SELECT} WHERE m.reviewed_at IS NOT NULL AND m.excluded_at IS NULL
                      ORDER BY m.reviewed_at DESC LIMIT ?1 OFFSET ?2"
+                );
+                let mut stmt = conn.prepare(&sql)?;
+                let rows = stmt.query_map(params![limit, offset], read_message)?;
+                rows.collect::<Result<Vec<_>>>()?
+            }
+            MessageFilter::Rewritten => {
+                let sql = format!(
+                    "{MESSAGE_SELECT} WHERE m.excluded_at IS NULL AND EXISTS (SELECT 1 FROM attempts a WHERE a.message_id = m.id)
+                     ORDER BY (SELECT MAX(a.created_at) FROM attempts a WHERE a.message_id = m.id) DESC LIMIT ?1 OFFSET ?2"
                 );
                 let mut stmt = conn.prepare(&sql)?;
                 let rows = stmt.query_map(params![limit, offset], read_message)?;
@@ -390,13 +450,183 @@ impl Db {
         Ok(())
     }
 
+    /// The review of one attempt. The `coaching` table keeps the latest one per message for the patterns;
+    /// the attempt keeps its own so earlier versions stay readable.
+    pub fn save_attempt_coaching(&self, attempt_id: i64, coaching: &Coaching) -> Result<()> {
+        let coaching = serde_json::to_string(coaching).unwrap_or_default();
+        self.conn().execute("UPDATE attempts SET coaching = ?2 WHERE id = ?1", params![attempt_id, coaching])?;
+        Ok(())
+    }
+
     pub fn save_attempt(&self, id: &str, text: &str, now: i64) -> Result<Attempt> {
         let conn = self.conn();
         conn.execute(
             "INSERT INTO attempts (message_id, text, created_at) VALUES (?1, ?2, ?3)",
             params![id, text, now],
         )?;
-        Ok(Attempt { id: conn.last_insert_rowid(), text: text.to_string(), created_at: now, screen: None })
+        Ok(Attempt { id: conn.last_insert_rowid(), text: text.to_string(), created_at: now, screen: None, coaching: None })
+    }
+
+    /// A rewrite that reaches the goal settles the message (reviewed); one that falls short puts it back in
+    /// the queue, even if it was reviewed before. Only called when the attempt has a score.
+    pub fn settle_after_attempt(&self, id: &str, reached_goal: bool, now: i64) -> Result<()> {
+        let conn = self.conn();
+        if reached_goal {
+            conn.execute("UPDATE messages SET reviewed_at = COALESCE(reviewed_at, ?2) WHERE id = ?1", params![id, now])?;
+        } else {
+            conn.execute("UPDATE messages SET reviewed_at = NULL WHERE id = ?1", [id])?;
+        }
+        Ok(())
+    }
+
+    pub fn record_usage(
+        &self,
+        kind: UsageKind,
+        message_id: Option<&str>,
+        answer_id: Option<i64>,
+        usage: &Usage,
+        ok: bool,
+        now: i64,
+    ) -> Result<()> {
+        self.conn().execute(
+            "INSERT INTO ai_usage (at, kind, message_id, answer_id, model, input_tokens, output_tokens,
+                                   cache_read_tokens, cache_write_tokens, cost_usd, duration_ms, ok)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            params![
+                now,
+                kind.key(),
+                message_id,
+                answer_id,
+                usage.model,
+                usage.input_tokens,
+                usage.output_tokens,
+                usage.cache_read_tokens,
+                usage.cache_write_tokens,
+                usage.cost_usd,
+                usage.duration_ms,
+                ok
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// `today` is the local date; the periods and the day rows are cut at local midnights counted back from it.
+    pub fn spending(&self, today: chrono::NaiveDate, recent: i64) -> Result<Spending> {
+        use chrono::TimeZone;
+        let midnight = |back: i64| -> i64 {
+            let midnight = (today - chrono::Duration::days(back)).and_hms_opt(0, 0, 0).unwrap_or_default();
+            chrono::Local.from_local_datetime(&midnight).earliest().map_or(0, |t| t.timestamp_millis())
+        };
+        let conn = self.conn();
+        let totals = |from: i64| -> Result<UsageTotals> {
+            conn.query_row(
+                "SELECT COALESCE(SUM(kind != 'screen'), 0), COALESCE(SUM(kind = 'screen'), 0), COALESCE(SUM(cost_usd), 0),
+                        COALESCE(SUM(input_tokens), 0), COALESCE(SUM(output_tokens), 0),
+                        COALESCE(SUM(cache_read_tokens + cache_write_tokens), 0)
+                 FROM ai_usage WHERE at >= ?1",
+                [from],
+                |r| {
+                    Ok(UsageTotals {
+                        claude_calls: r.get(0)?,
+                        jev_calls: r.get(1)?,
+                        cost_usd: r.get(2)?,
+                        input_tokens: r.get(3)?,
+                        output_tokens: r.get(4)?,
+                        cache_tokens: r.get(5)?,
+                    })
+                },
+            )
+        };
+        let month_start = midnight(29);
+        let mut by_day = std::collections::HashMap::new();
+        {
+            let mut stmt = conn.prepare(
+                "SELECT date(at / 1000, 'unixepoch', 'localtime'), COALESCE(SUM(cost_usd), 0), SUM(kind != 'screen'), SUM(kind = 'screen')
+                 FROM ai_usage WHERE at >= ?1 GROUP BY 1",
+            )?;
+            let rows = stmt.query_map([month_start], |r| {
+                Ok(DayCost { day: r.get(0)?, cost_usd: r.get(1)?, claude_calls: r.get(2)?, jev_calls: r.get(3)? })
+            })?;
+            for row in rows {
+                let row = row?;
+                by_day.insert(row.day.clone(), row);
+            }
+        }
+        let days = (0..30)
+            .rev()
+            .map(|back| {
+                let day = (today - chrono::Duration::days(back)).format("%Y-%m-%d").to_string();
+                by_day.remove(&day).unwrap_or(DayCost { day, cost_usd: 0.0, claude_calls: 0, jev_calls: 0 })
+            })
+            .collect();
+        let by_kind = {
+            let mut stmt = conn.prepare("SELECT kind, COUNT(*), COALESCE(SUM(cost_usd), 0) FROM ai_usage GROUP BY kind ORDER BY 3 DESC, 2 DESC")?;
+            let rows = stmt.query_map([], |r| {
+                let kind: String = r.get(0)?;
+                Ok(KindCost { kind: UsageKind::parse(&kind), calls: r.get(1)?, cost_usd: r.get(2)? })
+            })?;
+            rows.collect::<Result<Vec<_>>>()?
+        };
+        let recent = {
+            let mut stmt = conn.prepare(
+                "SELECT u.id, u.at, u.kind, COALESCE(substr(m.text, 1, 140), substr(a.text, 1, 140)), u.model, u.input_tokens,
+                        u.output_tokens, u.cache_read_tokens, u.cache_write_tokens, u.cost_usd, u.duration_ms, u.ok
+                 FROM ai_usage u
+                 LEFT JOIN messages m ON m.id = u.message_id
+                 LEFT JOIN interview_answers a ON a.id = u.answer_id
+                 WHERE u.kind != 'screen'
+                 ORDER BY u.at DESC, u.id DESC LIMIT ?1",
+            )?;
+            let rows = stmt.query_map([recent.clamp(1, 500)], |r| {
+                let kind: String = r.get(2)?;
+                Ok(UsageCall {
+                    id: r.get(0)?,
+                    at: r.get(1)?,
+                    kind: UsageKind::parse(&kind),
+                    preview: r.get(3)?,
+                    model: r.get(4)?,
+                    input_tokens: r.get(5)?,
+                    output_tokens: r.get(6)?,
+                    cache_read_tokens: r.get(7)?,
+                    cache_write_tokens: r.get(8)?,
+                    cost_usd: r.get(9)?,
+                    duration_ms: r.get(10)?,
+                    ok: r.get(11)?,
+                })
+            })?;
+            rows.collect::<Result<Vec<_>>>()?
+        };
+        let since: Option<i64> = conn.query_row("SELECT MIN(at) FROM ai_usage", [], |r| r.get(0))?;
+        Ok(Spending {
+            today: totals(midnight(0))?,
+            week: totals(midnight(6))?,
+            month: totals(month_start)?,
+            all_time: totals(0)?,
+            days,
+            by_kind,
+            recent,
+            since,
+        })
+    }
+
+    /// A screen already made for exactly this text under the current rubric, from a message, an attempt or
+    /// an interview answer. Reusing it saves a Jev call and gives the same text the same score every time.
+    pub fn known_screen(&self, text: &str) -> Result<Option<Screen>> {
+        let conn = self.conn();
+        for sql in [
+            "SELECT screen FROM attempts WHERE text = ?1 AND screen IS NOT NULL ORDER BY id DESC",
+            "SELECT screen FROM interview_answers WHERE text = ?1 AND screen IS NOT NULL ORDER BY id DESC",
+        ] {
+            let mut stmt = conn.prepare(sql)?;
+            let stored = stmt.query_map([text], |r| r.get::<_, String>(0))?.collect::<Result<Vec<_>>>()?;
+            if let Some(screen) =
+                stored.iter().filter_map(|j| serde_json::from_str::<Screen>(j).ok()).find(|s| s.rubric == RUBRIC)
+            {
+                return Ok(Some(screen));
+            }
+        }
+        let sql = format!("{MESSAGE_SELECT} WHERE m.text = ?1 AND s.rubric = ?2 AND s.prose IS NOT NULL LIMIT 1");
+        Ok(conn.query_row(&sql, params![text, RUBRIC], read_message).optional()?.and_then(|m| m.screen))
     }
 
     /// The Jev screen of one attempt, stored as JSON like an interview answer's.
@@ -695,9 +925,12 @@ fn read_message(r: &Row) -> Result<Message> {
                 english,
                 prose: r.get::<_, Option<f64>>(17)?.unwrap_or(1.0),
                 naturalness: r.get(8)?,
+                native: r.get(19)?,
+                rubric: r.get(20)?,
                 confidence: r.get(9)?,
                 issue: Issue::parse(&issue).unwrap_or(Issue::None),
                 issue_confidence: r.get(11)?,
+                slip: None,
             })
         }
         None => None,
@@ -712,6 +945,7 @@ fn read_message(r: &Row) -> Result<Message> {
                 tip: r.get(14)?,
                 issue: Issue::parse(&issue).unwrap_or(Issue::None),
                 created_at: r.get(16)?,
+                cost_usd: None,
             })
         }
         None => None,
@@ -732,20 +966,26 @@ fn read_message(r: &Row) -> Result<Message> {
 }
 
 fn attach_attempts(conn: &Connection, messages: &mut [Message]) -> Result<()> {
-    let mut stmt =
-        conn.prepare("SELECT id, text, created_at, screen FROM attempts WHERE message_id = ?1 ORDER BY created_at ASC, id ASC")?;
+    let mut stmt = conn
+        .prepare("SELECT id, text, created_at, screen, coaching FROM attempts WHERE message_id = ?1 ORDER BY created_at ASC, id ASC")?;
     for m in messages {
         m.attempts = stmt
             .query_map([&m.id], |r| {
                 let screen: Option<String> = r.get(3)?;
+                let coaching: Option<String> = r.get(4)?;
                 Ok(Attempt {
                     id: r.get(0)?,
                     text: r.get(1)?,
                     created_at: r.get(2)?,
                     screen: screen.and_then(|s| serde_json::from_str::<Screen>(&s).ok()),
+                    coaching: coaching.and_then(|c| serde_json::from_str::<Coaching>(&c).ok()),
                 })
             })?
             .collect::<Result<Vec<_>>>()?;
+        // `coaching` is the review of the latest version; an earlier version's review stays on its attempt.
+        if let Some(last) = m.attempts.last() {
+            m.coaching = last.coaching.clone();
+        }
     }
     Ok(())
 }
@@ -774,7 +1014,17 @@ mod tests {
     }
 
     fn screen(english: f64, prose: f64, naturalness: f64) -> Screen {
-        Screen { english, prose, naturalness, confidence: 0.5, issue: Issue::Grammar, issue_confidence: 0.5 }
+        Screen {
+            english,
+            prose,
+            naturalness,
+            native: Some(0.1),
+            rubric: RUBRIC,
+            confidence: 0.5,
+            issue: Issue::Grammar,
+            issue_confidence: 0.5,
+            slip: None,
+        }
     }
 
     fn queued(db: &Db) -> Vec<String> {
@@ -832,6 +1082,169 @@ mod tests {
         let stored = db.get_message("x").unwrap().unwrap();
         assert_eq!(stored.attempts[0].screen.as_ref().map(|s| s.naturalness), Some(2.1));
         assert!(stored.attempts[1].screen.is_none());
+    }
+
+    #[test]
+    fn a_text_screened_under_the_current_rubric_is_reused_and_an_older_screen_is_not() {
+        let db = open("known");
+        db.insert_messages(&[message("x")]).unwrap();
+        let try_one = db.save_attempt("x", "first try", 1).unwrap();
+        db.save_attempt_screen(try_one.id, &screen(0.95, 0.9, 2.1)).unwrap();
+        assert_eq!(db.known_screen("first try").unwrap().map(|s| s.naturalness), Some(2.1));
+        let original = "one two three four five six seven eight nine";
+        assert!(db.known_screen(original).unwrap().is_none());
+        db.save_screen("x", &screen(0.95, 0.9, 1.3), "t", 1).unwrap();
+        assert_eq!(db.known_screen(original).unwrap().map(|s| s.naturalness), Some(1.3));
+
+        let old = db.save_attempt("x", "older rubric", 2).unwrap();
+        db.save_attempt_screen(old.id, &Screen { rubric: 0, ..screen(0.95, 0.9, 2.5) }).unwrap();
+        assert!(db.known_screen("older rubric").unwrap().is_none());
+    }
+
+    #[test]
+    fn only_a_rewritten_message_is_screened_again_when_the_rubric_changes() {
+        let db = open("rubric");
+        db.insert_messages(&["rewritten", "untouched"].map(message)).unwrap();
+        let old = Screen { rubric: RUBRIC - 1, native: None, ..screen(0.95, 0.9, 1.2) };
+        db.save_screen("rewritten", &old, "t", 1).unwrap();
+        db.save_screen("untouched", &old, "t", 1).unwrap();
+        assert!(db.unscreened(1, 10).unwrap().is_empty());
+        db.save_attempt("rewritten", "a new version", 2).unwrap();
+        let pending: Vec<String> = db.unscreened(1, 10).unwrap().into_iter().map(|(id, _)| id).collect();
+        assert_eq!(pending, ["rewritten"]);
+        db.save_screen("rewritten", &screen(0.95, 0.9, 1.4), "t", 3).unwrap();
+        assert!(db.unscreened(1, 10).unwrap().is_empty());
+        assert_eq!(db.get_message("rewritten").unwrap().unwrap().screen.map(|s| s.rubric), Some(RUBRIC));
+    }
+
+    fn review(tip: &str, cost: Option<f64>) -> Coaching {
+        Coaching { rewrites: vec![], explanation: String::new(), tip: tip.into(), issue: Issue::Grammar, created_at: 9, cost_usd: cost }
+    }
+
+    #[test]
+    fn every_version_keeps_its_own_review_and_the_message_shows_the_latest() {
+        let db = open("attempt-coaching");
+        db.insert_messages(&[message("x")]).unwrap();
+        let first = db.save_attempt("x", "first try", 1).unwrap();
+        db.save_attempt_coaching(first.id, &review("first tip", Some(0.02))).unwrap();
+        let second = db.save_attempt("x", "second try", 2).unwrap();
+        // The second version is saved but not reviewed yet (the call failed): the old review is not the message's.
+        assert!(db.get_message("x").unwrap().unwrap().coaching.is_none());
+        db.save_attempt_coaching(second.id, &review("second tip", None)).unwrap();
+        let stored = db.get_message("x").unwrap().unwrap();
+        assert_eq!(stored.coaching.as_ref().map(|c| c.tip.as_str()), Some("second tip"));
+        assert_eq!(stored.attempts[0].coaching.as_ref().map(|c| (c.tip.as_str(), c.cost_usd)), Some(("first tip", Some(0.02))));
+    }
+
+    #[test]
+    fn a_rewrite_that_reaches_the_goal_settles_the_message_and_one_that_falls_short_brings_it_back() {
+        let db = open("settle");
+        db.insert_messages(&[message("x")]).unwrap();
+        db.save_screen("x", &screen(0.95, 0.9, 0.8), "t", 1).unwrap();
+        assert_eq!(queued(&db), ["x"]);
+
+        db.settle_after_attempt("x", true, 10).unwrap();
+        assert!(queued(&db).is_empty());
+        assert_eq!(db.get_message("x").unwrap().unwrap().reviewed_at, Some(10));
+        // An earlier mark keeps its time.
+        db.settle_after_attempt("x", true, 20).unwrap();
+        assert_eq!(db.get_message("x").unwrap().unwrap().reviewed_at, Some(10));
+
+        db.settle_after_attempt("x", false, 30).unwrap();
+        assert_eq!(queued(&db), ["x"]);
+        assert_eq!(db.get_message("x").unwrap().unwrap().reviewed_at, None);
+    }
+
+    #[test]
+    fn the_queue_orders_a_rewritten_message_by_its_latest_version() {
+        let db = open("queue-order");
+        db.insert_messages(&["worst", "better", "unscored"].map(message)).unwrap();
+        db.save_screen("worst", &screen(0.95, 0.9, 0.2), "t", 1).unwrap();
+        db.save_screen("better", &screen(0.95, 0.9, 0.5), "t", 1).unwrap();
+        db.save_screen("unscored", &screen(0.95, 0.9, 1.0), "t", 1).unwrap();
+        assert_eq!(queued(&db), ["worst", "better", "unscored"]);
+        // "worst" was rewritten and now scores 1.6, still short of the goal of 2.0 but better than the rest.
+        let attempt = db.save_attempt("worst", "again", 5).unwrap();
+        db.save_attempt_screen(attempt.id, &screen(0.95, 0.9, 1.6)).unwrap();
+        // An attempt that Jev could not score does not change the order.
+        db.save_attempt("unscored", "again", 6).unwrap();
+        assert_eq!(queued(&db), ["better", "unscored", "worst"]);
+    }
+
+    #[test]
+    fn the_rewritten_filter_lists_messages_with_attempts_newest_first_and_skips_set_aside_ones() {
+        let db = open("rewritten");
+        db.insert_messages(&["a", "b", "c", "d"].map(message)).unwrap();
+        db.save_attempt("a", "one", 10).unwrap();
+        db.save_attempt("b", "one", 30).unwrap();
+        db.save_attempt("a", "two", 40).unwrap();
+        db.save_attempt("c", "one", 20).unwrap();
+        db.set_excluded("c", Some(1)).unwrap();
+        let query = MessageQuery { filter: MessageFilter::Rewritten, limit: 10, offset: 0 };
+        let ids: Vec<_> = db.list_messages(&query, &Settings::default()).unwrap().into_iter().map(|m| m.id).collect();
+        assert_eq!(ids, ["a", "b"]);
+    }
+
+    #[test]
+    fn coaching_from_before_attempts_kept_their_own_goes_to_the_latest_attempt() {
+        let dir = std::env::temp_dir().join(format!("cadence-db-legacy-coaching-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("t.db");
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE messages (id TEXT PRIMARY KEY, text TEXT NOT NULL, ts INTEGER NOT NULL, project TEXT, session_id TEXT,
+                                        words INTEGER NOT NULL, source TEXT NOT NULL, reviewed_at INTEGER);
+                 CREATE TABLE coaching (message_id TEXT PRIMARY KEY, rewrites TEXT NOT NULL, explanation TEXT NOT NULL,
+                                        tip TEXT NOT NULL, issue TEXT NOT NULL, created_at INTEGER NOT NULL);
+                 CREATE TABLE attempts (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id TEXT NOT NULL, text TEXT NOT NULL, created_at INTEGER NOT NULL);
+                 INSERT INTO messages VALUES ('x', 'take this', 1, NULL, NULL, 2, 'history', NULL);
+                 INSERT INTO attempts (message_id, text, created_at) VALUES ('x', 'first', 10), ('x', 'second', 20);
+                 INSERT INTO coaching VALUES ('x', '[{\"register\":\"casual\",\"text\":\"look at this\"}]', 'why', 'tip', 'grammar', 25);",
+            )
+            .unwrap();
+        }
+        let stored = Db::open(&path).unwrap().get_message("x").unwrap().unwrap();
+        assert!(stored.attempts[0].coaching.is_none());
+        let latest = stored.attempts[1].coaching.as_ref().unwrap();
+        assert_eq!((latest.tip.as_str(), latest.issue, latest.created_at, latest.cost_usd), ("tip", Issue::Grammar, 25, None));
+        assert_eq!(latest.rewrites[0].text, "look at this");
+        assert_eq!(stored.coaching.unwrap().tip, "tip");
+    }
+
+    #[test]
+    fn spending_adds_up_claude_cost_counts_jev_screens_and_fills_every_day() {
+        use chrono::{Duration, Local, TimeZone};
+        let db = open("spending");
+        let today = Local::now().date_naive();
+        let noon = |back: i64| {
+            let t = (today - Duration::days(back)).and_hms_opt(12, 0, 0).unwrap();
+            Local.from_local_datetime(&t).earliest().unwrap().timestamp_millis()
+        };
+        let claude = |cost| Usage { model: "claude-sonnet-5-5".into(), input_tokens: 10, output_tokens: 5, cost_usd: Some(cost), ..Default::default() };
+        db.insert_messages(&[message("x")]).unwrap();
+        db.record_usage(UsageKind::Coach, Some("x"), None, &claude(0.25), true, noon(0)).unwrap();
+        db.record_usage(UsageKind::Interview, None, None, &claude(0.5), false, noon(3)).unwrap();
+        db.record_usage(UsageKind::Coach, Some("x"), None, &claude(1.0), true, noon(40)).unwrap();
+        db.record_usage(UsageKind::Screen, Some("x"), None, &Usage::default(), true, noon(0)).unwrap();
+
+        let s = db.spending(today, 100).unwrap();
+        assert_eq!((s.today.claude_calls, s.today.jev_calls), (1, 1));
+        assert!((s.today.cost_usd - 0.25).abs() < 1e-9);
+        assert!((s.week.cost_usd - 0.75).abs() < 1e-9);
+        assert!((s.month.cost_usd - 0.75).abs() < 1e-9, "a call 40 days ago is outside the month");
+        assert!((s.all_time.cost_usd - 1.75).abs() < 1e-9);
+        assert_eq!(s.days.len(), 30);
+        assert_eq!(s.days[29].day, today.format("%Y-%m-%d").to_string());
+        assert_eq!((s.days[29].claude_calls, s.days[29].jev_calls), (1, 1));
+        assert_eq!(s.days.iter().filter(|d| d.cost_usd > 0.0).count(), 2);
+        // Jev screens are counted but never listed; the newest call comes first and its message is the preview.
+        assert_eq!(s.recent.len(), 3);
+        assert!(s.recent[0].preview.is_some());
+        assert!(!s.recent[1].ok);
+        assert_eq!(s.since, Some(noon(40)));
+        assert_eq!(s.by_kind.iter().find(|k| k.kind == UsageKind::Coach).map(|k| k.calls), Some(2));
     }
 
     #[test]
@@ -965,6 +1378,7 @@ mod tests {
             tip: String::new(),
             issue: Issue::Grammar,
             created_at,
+            cost_usd: None,
         };
         db.save_coaching("a", &coaching(1_500)).unwrap();
         db.save_coaching("b", &coaching(900)).unwrap();
@@ -1036,7 +1450,7 @@ mod tests {
         db.save_screen("x", &screen(0.95, 0.9, 1.2), "t", 1).unwrap();
         db.save_coaching(
             "x",
-            &Coaching { rewrites: vec![], explanation: String::new(), tip: String::new(), issue: Issue::Grammar, created_at: 1 },
+            &Coaching { rewrites: vec![], explanation: String::new(), tip: String::new(), issue: Issue::Grammar, created_at: 1, cost_usd: None },
         )
         .unwrap();
         db.save_attempt("x", "my attempt", 1).unwrap();

@@ -1,7 +1,7 @@
 /* Dev-only stand-in for the Tauri backend, so the UI can be driven in a plain browser (`pnpm dev`).
    Twelve work messages (eight to practise, one reviewed, two not screened yet). A run is simulated and
    emits run-progress and messages-changed like the real one. `?nosetup` shows the missing-key and missing-CLI banners. */
-import type { Attempt, Coaching, InterviewAnswer, InterviewFeedback, InterviewQuestion, InterviewTopic, Issue, KeySource, Message, MessageQuery, Overview, Patterns, RunInfo, RunPhase, RunProgress, Screen, Settings } from "../api";
+import type { Attempt, Coaching, DayCost, InterviewAnswer, InterviewFeedback, InterviewQuestion, InterviewTopic, Issue, KeySource, KindCost, Message, MessageQuery, Overview, Patterns, RunInfo, RunPhase, RunProgress, Screen, Settings, Spending, UsageCall, UsageKind, UsageTotals } from "../api";
 
 type Handler = (e: { event: string; id: number; payload: unknown }) => void;
 
@@ -14,7 +14,16 @@ const localDay = (ts: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const screen = (naturalness: number, issue: Issue): Screen => ({ english: 0.97, prose: 0.93, naturalness, confidence: 0.86, issue, issueConfidence: 0.8 });
+const screen = (naturalness: number, issue: Issue): Screen => ({
+  english: 0.97,
+  prose: 0.93,
+  naturalness,
+  native: naturalness >= 3 ? 0.9 : 0.1,
+  rubric: 1,
+  confidence: 0.86,
+  issue,
+  issueConfidence: 0.8,
+});
 
 const coach = (issue: Issue, casual: string, professional: string, explanation: string, tip: string): Coaching => ({
   rewrites: [
@@ -25,6 +34,7 @@ const coach = (issue: Issue, casual: string, professional: string, explanation: 
   tip,
   issue,
   createdAt: Date.now(),
+  costUsd: null,
 });
 
 const COACH: Record<string, Coaching> = {
@@ -41,6 +51,20 @@ const COACH: Record<string, Coaching> = {
     "Could you check the deploy when you have time?",
     "'Please' goes straight before the verb, without 'to'. 'Could you' also sounds smoother in a chat.",
     "Use 'please + verb' or 'could you + verb', with no 'to' in between.",
+  ),
+  "m-proposal/0": coach(
+    "grammar",
+    "I agree with the proposal, so let's go ahead.",
+    "I agree with the proposal. Let's go ahead.",
+    "A comma joins two full sentences here, which is a comma splice. Use a full stop or 'so' instead.",
+    "Join two full sentences with a full stop or 'so', not a bare comma.",
+  ),
+  "m-proposal/1": coach(
+    "none",
+    "I agree with the proposal. Let's go ahead.",
+    "I agree with the proposal, so we can go ahead.",
+    "This version sounds native: two short sentences, and 'let's go ahead' is the usual phrase in chat.",
+    "Two short sentences read naturally in chat.",
   ),
   "m-proposal": coach(
     "grammar",
@@ -108,7 +132,7 @@ interface Seed {
 const SEEDS: Seed[] = [
   { id: "m-report", text: "I will send you the report until the end of the day.", hours: 2, project: "billing-api", screen: screen(1.2, "preposition_collocation") },
   { id: "m-deploy", text: "Please to check the deploy when you have time.", hours: 5, project: "web-app", screen: screen(0.8, "grammar"), coached: true, attempts: ["Please check the deploy when you get a moment."] },
-  { id: "m-proposal", text: "I am agree with the proposal, let's go ahead.", hours: 9, project: "web-app", screen: screen(1.4, "grammar") },
+  { id: "m-proposal", text: "I am agree with the proposal, let's go ahead.", hours: 9, project: "web-app", screen: screen(1.4, "grammar"), attempts: ["I agree with the proposal, let's go ahead.", "I agree with the proposal. Let's go ahead."] },
   { id: "m-pr", text: "Can you give a look at the PR when you can?", hours: 14, project: "ops", screen: screen(1.9, "word_choice"), source: "history" },
   { id: "m-migration", text: "Yesterday I have made the migration and it worked well.", hours: 20, project: "billing-api", screen: screen(1.6, "grammar") },
   { id: "m-release", text: "I am remembering you that the release is on Friday.", hours: 26, project: "web-app", screen: screen(1.1, "pt_calque") },
@@ -186,7 +210,14 @@ export function installMock() {
   };
 
   const messages: Message[] = SEEDS.map((s) => {
-    const coaching = s.coached ? COACH[s.id] : null;
+    const attempts = (s.attempts ?? []).map((text, i, all): Attempt => ({
+      id: attemptSeq++,
+      text,
+      createdAt: Date.now() - (s.hours - i) * HOUR,
+      screen: s.screen ? screen(Math.min(3, s.screen.naturalness + 1.1 + i * 0.5), "none") : null,
+      // A seeded coaching is keyed by message id, or by message id and attempt index when a version has its own.
+      coaching: COACH[`${s.id}/${i}`] ?? (i === all.length - 1 && s.coached ? COACH[s.id] : null),
+    }));
     return {
       id: s.id,
       text: s.text,
@@ -195,13 +226,8 @@ export function installMock() {
       words: wordCount(s.text),
       source: s.source ?? "transcript",
       screen: s.screen ?? null,
-      coaching,
-      attempts: (s.attempts ?? []).map((text): Attempt => ({
-        id: attemptSeq++,
-        text,
-        createdAt: Date.now() - s.hours * HOUR,
-        screen: s.screen ? screen(Math.min(3, s.screen.naturalness + 1.1), "none") : null,
-      })),
+      coaching: attempts[attempts.length - 1]?.coaching ?? null,
+      attempts,
       reviewedAt: s.reviewed ? Date.now() - DAY : null,
       excludedAt: null,
     };
@@ -211,6 +237,13 @@ export function installMock() {
     if (!m) throw new Error(`mock: no message ${String(id)}`);
     return m;
   };
+  const lastAttempt = (m: Message): Attempt | undefined => m.attempts[m.attempts.length - 1];
+  // The message shows the coaching of its latest version only.
+  const syncCoaching = (m: Message) => {
+    m.coaching = lastAttempt(m)?.coaching ?? null;
+  };
+  // Queue order: the latest version's naturalness, or the original screen when that version has none.
+  const queueKey = (m: Message) => lastAttempt(m)?.screen?.naturalness ?? m.screen?.naturalness ?? 0;
 
 
   let questionSeq = 1;
@@ -273,11 +306,17 @@ export function installMock() {
     if (filter === "queue") {
       return messages
         .filter(isQueued)
-        .sort((a, b) => (a.screen?.naturalness ?? 0) - (b.screen?.naturalness ?? 0))
+        .sort((a, b) => queueKey(a) - queueKey(b) || b.ts - a.ts)
         .slice(offset, offset + limit);
     }
     if (filter === "excluded") {
       return messages.filter((m) => m.excludedAt !== null).sort((a, b) => b.ts - a.ts).slice(offset, offset + limit);
+    }
+    if (filter === "rewritten") {
+      return messages
+        .filter((m) => m.excludedAt === null && m.attempts.length > 0)
+        .sort((a, b) => (lastAttempt(b)?.createdAt ?? 0) - (lastAttempt(a)?.createdAt ?? 0))
+        .slice(offset, offset + limit);
     }
     return messages
       .filter((m) => m.excludedAt === null && (filter === "all" || m.reviewedAt !== null))
@@ -339,6 +378,96 @@ export function installMock() {
     };
   };
 
+  // Usage records: one per Claude call, plus one per TypeSafe screen (priced from input tokens only, $0.042 per million).
+  const usage: UsageCall[] = [];
+  let usageSeq = 1;
+  const recordUsage = (c: Omit<UsageCall, "id">) => {
+    usage.push({ id: usageSeq++, ...c });
+  };
+  const USAGE_PREVIEWS = [
+    "I will send you the report until the end of the day.",
+    "Please to check the deploy when you have time.",
+    "How would you make an endpoint that charges a card safe to retry?",
+    "I am agree with the proposal, let's go ahead.",
+    "Tell me about a production incident you handled.",
+    "Yesterday I have made the migration and it worked well.",
+  ];
+  for (let i = 0; i < 25; i++) {
+    recordUsage({
+      at: Date.now() - ((i * 7) % 30) * DAY - (i % 5) * HOUR,
+      kind: i % 3 === 0 ? "interview" : "coach",
+      preview: i === 4 ? null : USAGE_PREVIEWS[i % USAGE_PREVIEWS.length],
+      model: "claude-sonnet-5-5",
+      inputTokens: 900 + i * 40,
+      outputTokens: 300 + i * 12,
+      cacheReadTokens: 600 + i * 20,
+      cacheWriteTokens: i % 4 === 0 ? 1200 : 0,
+      costUsd: Number((0.004 + ((i * 0.0137) % 0.056)).toFixed(4)),
+      durationMs: 4000 + i * 230,
+      ok: i !== 7,
+    });
+  }
+  for (let i = 0; i < 12; i++) {
+    recordUsage({
+      at: Date.now() - ((i * 11) % 30) * DAY - i * HOUR,
+      kind: "screen",
+      preview: null,
+      model: "jev-latest",
+      inputTokens: 640,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      costUsd: 640 * 0.042e-6,
+      durationMs: 310 + i * 20,
+      ok: true,
+    });
+  }
+
+  const usageTotals = (rows: UsageCall[]): UsageTotals => {
+    const claude = rows.filter((r) => r.kind !== "screen");
+    return {
+      claudeCalls: claude.length,
+      jevCalls: rows.length - claude.length,
+      costUsd: claude.reduce((n, r) => n + (r.costUsd ?? 0), 0),
+      inputTokens: claude.reduce((n, r) => n + r.inputTokens, 0),
+      outputTokens: claude.reduce((n, r) => n + r.outputTokens, 0),
+      cacheTokens: claude.reduce((n, r) => n + r.cacheReadTokens + r.cacheWriteTokens, 0),
+    };
+  };
+
+  const spending = (): Spending => {
+    // Local day keys for the last 30 days, oldest first. Same-format keys compare in date order.
+    const keys: string[] = [];
+    for (let n = 29; n >= 0; n--) {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      keys.push(localDay(d.getTime()));
+    }
+    const dayOf = (r: UsageCall) => localDay(r.at);
+    const days: DayCost[] = keys.map((day) => {
+      const t = usageTotals(usage.filter((r) => dayOf(r) === day));
+      return { day, costUsd: t.costUsd, claudeCalls: t.claudeCalls, jevCalls: t.jevCalls };
+    });
+    const byKind: KindCost[] = (["coach", "interview", "screen"] as UsageKind[]).map((kind) => {
+      const rows = usage.filter((r) => r.kind === kind);
+      return { kind, calls: rows.length, costUsd: rows.reduce((n, r) => n + (r.costUsd ?? 0), 0) };
+    });
+    return {
+      today: usageTotals(usage.filter((r) => dayOf(r) === keys[keys.length - 1])),
+      week: usageTotals(usage.filter((r) => dayOf(r) >= keys[keys.length - 7])),
+      month: usageTotals(usage.filter((r) => dayOf(r) >= keys[0])),
+      allTime: usageTotals(usage),
+      days,
+      byKind,
+      recent: usage
+        .filter((r) => r.kind !== "screen")
+        .sort((a, b) => b.at - a.at)
+        .slice(0, 100)
+        .map((r) => ({ ...r })),
+      since: usage.length ? Math.min(...usage.map((r) => r.at)) : null,
+    };
+  };
+
   const runPipeline = async () => {
     running = true;
     const progress = (phase: RunPhase, done: number, total: number) => emit("run-progress", { phase, done, total, message: null } satisfies RunProgress);
@@ -361,26 +490,64 @@ export function installMock() {
   const commands: Record<string, (a: Record<string, unknown>) => unknown> = {
     overview,
     list_messages: async (a) => (await sleep(150), list(a.query as MessageQuery)),
+    get_message: (a) => {
+      const m = messages.find((x) => x.id === a.id);
+      if (!m) throw new Error("That message no longer exists");
+      return structuredClone(m);
+    },
     coach_message: async (a) => {
       await sleep(1500);
       const m = find(a.id);
-      if (m.attempts.length === 0) throw new Error("Write your version first");
+      const latest = lastAttempt(m);
+      if (!latest) throw new Error("Write your version first");
       const c = COACH[m.id];
       if (!c) throw new Error("mock: no coaching written for this message");
-      m.coaching = c;
-      return c;
+      const reviewed: Coaching = { ...c, createdAt: Date.now(), costUsd: 0.0187 };
+      latest.coaching = reviewed;
+      syncCoaching(m);
+      recordUsage({
+        at: Date.now(),
+        kind: "coach",
+        preview: m.text.slice(0, 80),
+        model: "claude-sonnet-5-5",
+        inputTokens: 1380,
+        outputTokens: 410,
+        cacheReadTokens: 860,
+        cacheWriteTokens: 0,
+        costUsd: 0.0187,
+        durationMs: 6200,
+        ok: true,
+      });
+      return reviewed;
     },
     save_attempt: (a) => {
       const m = find(a.id);
-      // Each try lands a little higher than the last one, so the progress strip has something to show.
-      const last = m.attempts[m.attempts.length - 1]?.screen ?? m.screen;
-      const attempt: Attempt = {
-        id: attemptSeq++,
-        text: String(a.text),
-        createdAt: Date.now(),
-        screen: screen(Math.min(3, (last?.naturalness ?? 1) + 0.6), "none"),
-      };
+      const text = String(a.text);
+      // Stands in for the Jev score: deterministic, 0 to 3, from the text length.
+      const score = Math.min(3, (text.length % 31) / 10);
+      const attempt: Attempt = { id: attemptSeq++, text, createdAt: Date.now(), screen: screen(score, "none"), coaching: null };
       m.attempts.push(attempt);
+      syncCoaching(m);
+      // Reaching the flag threshold counts as reviewed; falling short puts the message back in the queue.
+      const goal = settings.flagThreshold;
+      if (score >= goal) {
+        if (m.reviewedAt === null) m.reviewedAt = Date.now();
+      } else {
+        m.reviewedAt = null;
+      }
+      recordUsage({
+        at: Date.now(),
+        kind: "screen",
+        preview: null,
+        model: "jev-latest",
+        inputTokens: 640,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 640 * 0.042e-6,
+        durationMs: 310,
+        ok: true,
+      });
       return attempt;
     },
     mark_reviewed: (a) => {
@@ -392,6 +559,7 @@ export function installMock() {
       emit("messages-changed", undefined);
     },
     patterns,
+    spending,
     get_settings: () => ({ ...settings }),
     set_settings: (a) => {
       settings = { ...(a.settings as Settings) };

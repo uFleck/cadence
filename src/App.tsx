@@ -6,6 +6,7 @@ import { Interview } from "./components/Interview";
 import { MessageList } from "./components/MessageList";
 import { PatternsView } from "./components/Patterns";
 import { SettingsView } from "./components/SettingsView";
+import { SpendingView } from "./components/Spending";
 import { StatusBar } from "./components/StatusBar";
 import { Today } from "./components/Today";
 import { WindowControls } from "./components/WindowControls";
@@ -13,13 +14,14 @@ import { errorText, type Notify } from "./components/shared";
 import { EASE, SPRING } from "./motion";
 import { useTheme } from "./theme";
 
-type View = "today" | "interview" | "all" | "patterns" | "settings";
+type View = "today" | "interview" | "all" | "patterns" | "spending" | "settings";
 
 const VIEWS: [View, string, string][] = [
   ["today", "Today", "ph-tray"],
   ["interview", "Interview", "ph-microphone"],
   ["all", "All messages", "ph-list"],
   ["patterns", "Patterns", "ph-chart-line-up"],
+  ["spending", "Spending", "ph-coins"],
   ["settings", "Settings", "ph-gear"],
 ];
 
@@ -203,6 +205,7 @@ export default function App() {
               {view === "interview" && <Interview notify={notify} />}
               {view === "all" && <MessageList version={version} notify={notify} />}
               {view === "patterns" && <PatternsView version={version} notify={notify} />}
+              {view === "spending" && <SpendingView version={version} notify={notify} />}
               {view === "settings" && <SettingsView notify={notify} onSaved={refresh} />}
             </motion.div>
           </AnimatePresence>

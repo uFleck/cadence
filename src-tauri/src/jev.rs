@@ -1,4 +1,4 @@
-use crate::model::{Issue, Screen};
+use crate::model::{Issue, Screen, MIN_NATIVE, MIN_SLIP, MIN_TOP_FROM, RUBRIC, SLIP_SCORE, TOP_SCORE};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::time::Duration;
@@ -121,6 +121,26 @@ pub struct Jev {
     key: String,
 }
 
+/// TypeSafe prices Jev by input tokens only ($0.042 per million); output tokens are free.
+const USD_PER_INPUT_TOKEN: f64 = 0.042 / 1_000_000.0;
+
+fn request(text: &str) -> Value {
+    json!({ "model": MODEL, "state": text, "questions": questions() })
+}
+
+/// What one screen of `text` is recorded as. The response carries no token count, so the input is estimated
+/// at about four characters a token over the whole request (the questions go along with every call, and
+/// outweigh a short message). The cost is therefore an estimate too.
+pub fn usage(text: &str) -> crate::model::Usage {
+    let tokens = (request(text).to_string().chars().count() as i64 + 3) / 4;
+    crate::model::Usage {
+        model: MODEL.to_string(),
+        input_tokens: tokens,
+        cost_usd: Some(tokens as f64 * USD_PER_INPUT_TOKEN),
+        ..Default::default()
+    }
+}
+
 fn questions() -> Value {
     json!({
         "is_english": {
@@ -137,17 +157,40 @@ fn questions() -> Value {
         },
         "naturalness": {
             "type": "score",
-            "instructions": "How natural the `state` sounds, as written by a fluent native English speaker in a work chat.",
+            "instructions": "How natural the `state` sounds, as written by a fluent native English speaker in a work chat. \
+                The `state` is a message a software engineer typed to a coding agent such as Claude Code, so judge the wording and grammar only. \
+                A missing final period, a lowercase first letter, a dropped subject and short imperatives are normal in that chat and never lower the score. \
+                A tool, command or package name that is also an English word (just, make, go, node) is a name, not a grammar mistake, when it is in quotes or backticks.",
             "criteria": [
                 "Clearly unnatural or ungrammatical",
                 "Understandable but awkward or non-native phrasing",
                 "Mostly natural with a small awkwardness",
-                "Fully natural"
+                "Fully natural: nothing a native speaker would change in the wording"
             ]
+        },
+        "is_native": {
+            "type": "noul",
+            "instructions": "A fluent native English speaker who is a software engineer would send the `state` to a coding agent such as Claude Code exactly as it is, without changing a single word. \
+                Judge the wording and grammar only: a missing final period, a lowercase first letter, a dropped subject, short imperatives and quoted tool names are normal in that chat.",
+            "criteria": {
+                "true": "Nothing in the wording or grammar would be changed: no word, article, preposition, tense or word order.",
+                "false": "A native speaker would change at least one word, article, preposition, tense or the word order."
+            }
+        },
+        "slip": {
+            "type": "choice",
+            "instructions": "A mistake a Brazilian Portuguese speaker makes in English that still looks grammatical, in a message a software engineer typed to a coding agent. \
+                Pick none unless a fluent native speaker would clearly notice it. A missing final period, a lowercase first letter, a dropped subject and quoted tool names are never mistakes.",
+            "criteria": {
+                "none": "Nothing a native speaker would notice",
+                "false_friend": "An English word used with the meaning of a similar Portuguese word (assist for attend, pretend for intend, actually for currently), or a verb a native speaker would not pair with that noun",
+                "calque": "A Portuguese expression or structure translated word for word, such as a question word order kept inside a statement (show me where is the config)",
+                "register": "Rude, bossy or far too blunt for a request to a colleague or an assistant in a work chat"
+            }
         },
         "issue": {
             "type": "choice",
-            "instructions": "The main thing that makes the `state` sound non-native. Pick none if it sounds native.",
+            "instructions": "The main thing that makes the `state` sound non-native, in a message a software engineer typed to a coding agent. Pick none if it sounds native. Punctuation at the end, capitalisation and quoted tool names are not issues.",
             "criteria": {
                 "none": "Sounds native",
                 "grammar": "Wrong or missing articles, tenses, plurals or agreement",
@@ -179,10 +222,52 @@ fn parse_screen(body: &Value) -> Result<Screen, String> {
         english: number("is_english", "noul")?,
         prose: number("is_prose", "noul")?,
         naturalness: number("naturalness", "score")?,
+        native: Some(number("is_native", "noul")?),
+        rubric: RUBRIC,
         confidence: number("naturalness", "confidence")?,
         issue: Issue::parse(choice).ok_or_else(|| format!("unknown issue `{choice}`"))?,
         issue_confidence: number("issue", "confidence")?,
+        slip: slip(answers)?,
     })
+}
+
+/// The `slip` answer as an issue; None when Jev found nothing (or, in an older response, was not asked).
+fn slip(answers: &Value) -> Result<Option<(Issue, f64)>, String> {
+    let Some(answer) = answers.get("slip") else { return Ok(None) };
+    let choice = answer.get("choice").and_then(Value::as_str).ok_or("answer `slip` has no `choice`")?;
+    let confidence = answer.get("confidence").and_then(Value::as_f64).ok_or("answer `slip` has no `confidence`")?;
+    let issue = match choice {
+        "none" => return Ok(None),
+        "false_friend" => Issue::WordChoice,
+        "calque" => Issue::PtCalque,
+        "register" => Issue::Register,
+        other => return Err(format!("unknown slip `{other}`")),
+    };
+    Ok(Some((issue, confidence)))
+}
+
+/// Whether a message nothing is wrong with should score the top (see `MIN_NATIVE`).
+pub fn reaches_top(s: &Screen, min_native: f64, min_from: f64) -> bool {
+    s.native.is_some_and(|n| n >= min_native) && s.issue == Issue::None && s.naturalness >= min_from
+}
+
+/// The subtle mistake to report, when the `slip` answer is confident enough.
+pub fn found_slip(s: &Screen, min_slip: f64) -> Option<Issue> {
+    s.slip.filter(|(_, confidence)| *confidence >= min_slip).map(|(issue, _)| issue)
+}
+
+/// Turns Jev's answers into the stored screen. A subtle mistake the score missed caps it below the goal;
+/// otherwise a message nothing is wrong with is lifted to the top, which the score never reaches on its own.
+pub fn with_rules(mut s: Screen) -> Screen {
+    if let Some(issue) = found_slip(&s, MIN_SLIP) {
+        if s.issue == Issue::None {
+            s.issue = issue;
+        }
+        s.naturalness = s.naturalness.min(SLIP_SCORE);
+    } else if reaches_top(&s, MIN_NATIVE, MIN_TOP_FROM) {
+        s.naturalness = TOP_SCORE;
+    }
+    s
 }
 
 impl Jev {
@@ -191,7 +276,12 @@ impl Jev {
     }
 
     pub async fn screen(&self, text: &str) -> Result<Screen, String> {
-        let request = json!({ "model": MODEL, "state": text, "questions": questions() });
+        self.screen_raw(text).await.map(with_rules)
+    }
+
+    /// Jev's own answers, before `with_rules`; the eval compares rules on them.
+    pub async fn screen_raw(&self, text: &str) -> Result<Screen, String> {
+        let request = request(text);
         let mut delay = Duration::from_secs(1);
         for attempt in 1..=MAX_ATTEMPTS {
             let sent = self.client.post(ENDPOINT).bearer_auth(&self.key).json(&request).send().await;
@@ -233,6 +323,7 @@ mod tests {
             "answers": {
                 "is_english": { "type": "noul", "noul": 0.91 },
                 "is_prose": { "type": "noul", "noul": 0.84 },
+                "is_native": { "type": "noul", "noul": 0.12 },
                 "naturalness": { "type": "score", "score": 1.28, "confidence": 0.67, "probabilities": {} },
                 "issue": { "type": "choice", "choice": "preposition_collocation", "confidence": 0.36, "probabilities": {} }
             }
@@ -242,6 +333,87 @@ mod tests {
         assert!((s.naturalness - 1.28).abs() < 1e-9);
         assert!((s.english - 0.91).abs() < 1e-9);
         assert!((s.prose - 0.84).abs() < 1e-9);
+        assert_eq!(s.native, Some(0.12));
+        assert_eq!(s.rubric, RUBRIC);
+    }
+
+    #[test]
+    fn a_message_a_native_speaker_would_not_change_scores_the_top() {
+        let body = |native: f64| {
+            json!({
+                "answers": {
+                    "is_english": { "noul": 0.97 },
+                    "is_prose": { "noul": 0.95 },
+                    "is_native": { "noul": native },
+                    "naturalness": { "score": 2.41, "confidence": 0.6 },
+                    "issue": { "choice": "none", "confidence": 0.6 }
+                }
+            })
+        };
+        let top = |native: f64| with_rules(parse_screen(&body(native)).unwrap()).naturalness;
+        assert_eq!(top(MIN_NATIVE), TOP_SCORE);
+        assert!((top(MIN_NATIVE - 0.01) - 2.41).abs() < 1e-9);
+    }
+
+    #[test]
+    fn the_top_never_lifts_a_message_with_an_issue_or_a_low_score() {
+        let s = |naturalness: f64, issue: Issue| Screen {
+            english: 0.95,
+            prose: 0.95,
+            naturalness,
+            native: Some(0.9),
+            rubric: RUBRIC,
+            confidence: 0.5,
+            issue,
+            issue_confidence: 0.5,
+            slip: None,
+        };
+        assert_eq!(with_rules(s(2.3, Issue::WordChoice)).naturalness, 2.3);
+        assert_eq!(with_rules(s(MIN_TOP_FROM - 0.1, Issue::None)).naturalness, MIN_TOP_FROM - 0.1);
+        assert_eq!(with_rules(s(MIN_TOP_FROM, Issue::None)).naturalness, TOP_SCORE);
+    }
+
+    #[test]
+    fn a_confident_slip_caps_the_score_and_names_the_issue() {
+        let body = |confidence: f64| {
+            json!({
+                "answers": {
+                    "is_english": { "noul": 0.95 },
+                    "is_prose": { "noul": 0.95 },
+                    "is_native": { "noul": 0.7 },
+                    "naturalness": { "score": 2.4, "confidence": 0.6 },
+                    "slip": { "choice": "false_friend", "confidence": confidence },
+                    "issue": { "choice": "none", "confidence": 0.5 }
+                }
+            })
+        };
+        let caught = with_rules(parse_screen(&body(MIN_SLIP)).unwrap());
+        assert_eq!(caught.naturalness, SLIP_SCORE);
+        assert_eq!(caught.issue, Issue::WordChoice);
+        let unsure = with_rules(parse_screen(&body(MIN_SLIP - 0.01)).unwrap());
+        assert_eq!(unsure.naturalness, TOP_SCORE);
+        assert_eq!(unsure.issue, Issue::None);
+    }
+
+    #[test]
+    fn every_slip_option_maps_to_an_issue() {
+        let q = questions();
+        for option in q["slip"]["criteria"].as_object().unwrap().keys() {
+            let answers = json!({ "slip": { "choice": option, "confidence": 0.9 } });
+            assert!(slip(&answers).is_ok(), "{option}");
+        }
+    }
+
+    #[test]
+    fn a_screen_is_priced_by_estimated_input_tokens_only() {
+        let short = usage("check this");
+        let long = usage(&"word ".repeat(400));
+        assert!(short.input_tokens > 100, "the questions count towards the input");
+        assert!(long.input_tokens > short.input_tokens);
+        assert_eq!(short.output_tokens, 0);
+        let expected = short.input_tokens as f64 * 0.042 / 1_000_000.0;
+        assert!((short.cost_usd.unwrap() - expected).abs() < 1e-12);
+        assert!(short.cost_usd.unwrap() < 0.0001, "a screen costs a fraction of a cent");
     }
 
     #[test]
@@ -261,6 +433,7 @@ mod tests {
             "answers": {
                 "is_english": { "noul": 0.9 },
                 "is_prose": { "noul": 0.9 },
+                "is_native": { "noul": 0.1 },
                 "naturalness": { "score": 2.0, "confidence": 0.5 },
                 "issue": { "choice": "vibes", "confidence": 0.5 }
             }

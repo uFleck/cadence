@@ -279,3 +279,65 @@
 .btn.is-done:disabled { opacity: 1; }
 .btn.is-done:hover { border-color: var(--good); background: var(--good-soft); }
 .btn.is-done i { display: inline-block; }
+
+/* ───────── rewrite history and review cost ───────── */
+.cost-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font: 600 11.5px var(--sans);
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+.pending-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md, 10px);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.pending-note .btn { margin-left: auto; }
+.stays-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.stays-note i { color: var(--accent); font-size: 16px; }
+.ver-wrap { margin-top: 12px; }
+.versions { border-top: 1px solid var(--line); padding-top: 10px; }
+.versions > summary, .ver-coach > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  font: 600 11.5px var(--sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  list-style: none;
+}
+.versions > summary::-webkit-details-marker, .ver-coach > summary::-webkit-details-marker { display: none; }
+.versions > summary:hover, .ver-coach > summary:hover { color: var(--ink); }
+.count-pill { padding: 0 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.ver-list { display: flex; flex-direction: column; gap: 14px; margin: 12px 0 2px; padding: 0; list-style: none; }
+.ver { display: flex; flex-direction: column; gap: 6px; padding-left: 14px; border-left: 2px solid var(--line); }
+.ver-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12px; }
+.ver .attempt-text { font-size: 16px; }
+.ver-coach { font-size: 13.5px; color: var(--ink-2); }
+.ver-coach > summary { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 12.5px; }
+.ver-coach p { margin: 6px 0 0; line-height: 1.55; }
+.ver-coach ul { margin: 6px 0 0; padding-left: 18px; }
+.ver-coach li { margin: 3px 0; }
+.row-tries { font: 600 12px var(--sans); font-variant-numeric: tabular-nums; color: var(--muted); }

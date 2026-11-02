@@ -4,11 +4,12 @@ import { api, type Message, type MessageFilter } from "../api";
 import { EASE, SPRING } from "../motion";
 import "../styles/messages.css";
 import { MessageCard } from "./MessageCard";
-import { ago, errorText, IssueChip, Meter, type Notify } from "./shared";
+import { ago, currentScore, errorText, IssueChip, Meter, type Notify } from "./shared";
 
 const PAGE = 40;
 const FILTERS: [MessageFilter, string][] = [
   ["queue", "Queue"],
+  ["rewritten", "Rewritten"],
   ["reviewed", "Reviewed"],
   ["all", "All"],
   ["excluded", "Set aside"],
@@ -26,7 +27,9 @@ export function MessageList({ version, notify }: { version: number; notify: Noti
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
-  const [open, setOpen] = useState<Message | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  // The card reads the message from the list, so a version saved in it shows up when the row is opened again.
+  const open = items.find((m) => m.id === openId) ?? null;
   const request = useRef(0);
 
   const fetchPage = useCallback(async (f: MessageFilter, offset: number) => {
@@ -68,7 +71,7 @@ export function MessageList({ version, notify }: { version: number; notify: Noti
                   aria-pressed={filter === id}
                   onClick={() => {
                     setFilter(id);
-                    setOpen(null);
+                    setOpenId(null);
                   }}
                 >
                   {filter === id && <motion.span layoutId="seg-pill" className="seg-pill" transition={SPRING} />}
@@ -117,7 +120,7 @@ export function MessageList({ version, notify }: { version: number; notify: Noti
                     type="button"
                     className={`msg-row${open?.id === m.id ? " active" : ""}`}
                     aria-pressed={open?.id === m.id}
-                    onClick={() => setOpen(m)}
+                    onClick={() => setOpenId(m.id)}
                   >
                     <span className="row-text">{m.text}</span>
                     <span className="row-meta">
@@ -126,7 +129,12 @@ export function MessageList({ version, notify }: { version: number; notify: Noti
                         {m.reviewedAt !== null && <i className="ph ph-check-circle row-done" role="img" aria-label="Reviewed" title="Reviewed" />}
                       </span>
                       <span className="row-scores">
-                        {m.screen && <Meter value={m.screen.naturalness} />}
+                        {m.screen && m.attempts[m.attempts.length - 1]?.screen?.rubric === m.screen.rubric && (
+                          <span className="row-tries" title="Original score, then the latest version's">
+                            {m.screen.naturalness.toFixed(1)} → {(currentScore(m) ?? m.screen.naturalness).toFixed(1)}
+                          </span>
+                        )}
+                        {m.screen && <Meter value={currentScore(m) ?? m.screen.naturalness} />}
                         {m.screen && <IssueChip issue={m.screen.issue} />}
                       </span>
                     </span>
@@ -174,7 +182,7 @@ export function MessageList({ version, notify }: { version: number; notify: Noti
             >
               <div className="msg-panel-h">
                 <span className="eyebrow">Message</span>
-                <button type="button" className="ib" aria-label="Close panel" onClick={() => setOpen(null)}>
+                <button type="button" className="ib" aria-label="Close panel" onClick={() => setOpenId(null)}>
                   <i className="ph ph-x" aria-hidden="true" />
                 </button>
               </div>
@@ -182,12 +190,13 @@ export function MessageList({ version, notify }: { version: number; notify: Noti
                 key={open.id}
                 message={open}
                 notify={notify}
+                onChange={(fresh) => setItems((list) => list.map((x) => (x.id === fresh.id ? fresh : x)))}
                 onReviewed={() => {
-                  setOpen(null);
+                  setOpenId(null);
                   void fetchPage(filter, 0);
                 }}
                 onExcluded={() => {
-                  setOpen(null);
+                  setOpenId(null);
                   void fetchPage(filter, 0);
                 }}
               />

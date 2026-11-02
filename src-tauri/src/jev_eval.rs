@@ -3,12 +3,12 @@
 //!
 //!     cargo test --lib jev_eval -- --ignored --nocapture
 //!
-//! `evals/cases.json` holds 113 labelled messages. Raw answers go to `evals/results.json` so the sweep can be
+//! `evals/cases.json` holds 127 labelled messages. Raw answers go to `evals/results.json` so the sweep can be
 //! inspected without calling the API again.
 
 use crate::ingest;
 use crate::jev::{api_key, Jev};
-use crate::model::{Screen, Settings, MIN_ENGLISH, MIN_PROSE};
+use crate::model::{Issue, Screen, Settings, MIN_ENGLISH, MIN_NATIVE, MIN_PROSE, MIN_SLIP, MIN_TOP_FROM, TOP_SCORE};
 use crate::redact::redact;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -104,7 +104,7 @@ async fn screen_all(cases: &[Case]) -> Vec<(Case, Screen)> {
             .map(|case| {
                 let jev = jev.clone();
                 tokio::spawn(async move {
-                    let screen = jev.screen(&case.text).await;
+                    let screen = jev.screen_raw(&case.text).await;
                     (case, screen)
                 })
             })
@@ -115,6 +115,63 @@ async fn screen_all(cases: &[Case]) -> Vec<(Case, Screen)> {
         }
     }
     out
+}
+
+/// Which rule for the top score (see `MIN_NATIVE`) lifts the most native messages and no flawed one, from
+/// Jev's own answers before any rule is applied.
+fn top_report(raw: &[(Case, Screen)]) {
+    let people: Vec<&(Case, Screen)> =
+        raw.iter().filter(|(c, s)| c.reached && s.english >= MIN_ENGLISH && s.prose >= MIN_PROSE).collect();
+    let count = |kind: &str, rule: &dyn Fn(&Screen) -> bool| people.iter().filter(|(c, s)| c.kind == kind && rule(s)).count();
+    let natives = count("native", &|_| true);
+    println!("\ntop-score rules: native messages lifted, flawed messages lifted");
+    let mut rows = Vec::new();
+    for n in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8] {
+        for from in [0.0, 1.8, 2.0, 2.2, 2.4] {
+            for needs_none in [false, true] {
+                let rule = |s: &Screen| {
+                    s.native.is_some_and(|v| v >= n) && s.naturalness >= from && (!needs_none || s.issue == Issue::None)
+                };
+                rows.push((count("flawed", &rule), count("native", &rule), n, from, needs_none));
+            }
+        }
+    }
+    rows.sort_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1)));
+    for (flawed, native, n, from, none) in rows.iter().take(12) {
+        println!("  native>={n:<4} score>={from:<3} issue=none:{none:<5}  natives {native}/{natives}  flawed {flawed}");
+    }
+    let shipped = |s: &Screen| crate::jev::reaches_top(s, MIN_NATIVE, MIN_TOP_FROM);
+    println!(
+        "  shipped (native>={MIN_NATIVE} score>={MIN_TOP_FROM} issue=none): natives {}/{natives}  flawed {}",
+        count("native", &shipped),
+        count("flawed", &shipped)
+    );
+    println!("flawed messages a native speaker would leave alone, per Jev (native >= 0.5):");
+    for (c, s) in people.iter().filter(|(c, s)| c.kind == "flawed" && s.native.is_some_and(|v| v >= 0.5)) {
+        println!("  {} native {:.2} score {:.2} {}: {}", c.id, s.native.unwrap_or(0.0), s.naturalness, s.issue.key(), c.text);
+    }
+}
+
+/// How the `slip` question would change the queue at each confidence: flawed messages it catches that the
+/// score alone missed, and natural messages it would wrongly send to the queue.
+fn slip_report(raw: &[(Case, Screen)]) {
+    let people: Vec<&(Case, Screen)> =
+        raw.iter().filter(|(c, s)| c.reached && s.english >= MIN_ENGLISH && s.prose >= MIN_PROSE).collect();
+    let goal = Settings::default().flag_threshold;
+    let missed = people.iter().filter(|(c, s)| c.kind == "flawed" && s.naturalness >= goal).count();
+    println!("\nslip rules: flawed messages the score missed that it catches, natural messages it flags wrongly");
+    for t in [0.3, 0.4, 0.5, 0.6, 0.7, 0.8] {
+        let hit = |kind: &str| {
+            people.iter().filter(|(c, s)| c.kind == kind && s.naturalness >= goal && crate::jev::found_slip(s, t).is_some()).count()
+        };
+        let mark = if t == MIN_SLIP { "  <- shipped" } else { "" };
+        println!("  slip>={t}  caught {}/{missed}  natives flagged {}{mark}", hit("flawed"), hit("native"));
+    }
+    println!("slip answers on flawed and native messages:");
+    for (c, s) in people.iter().filter(|(c, s)| (c.kind == "flawed" || c.kind == "native") && s.slip.is_some()) {
+        let (issue, conf) = s.slip.unwrap();
+        println!("  {} [{}] score {:.2} slip {}({:.2}): {}", c.id, c.kind, s.naturalness, issue.key(), conf, c.text);
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -129,7 +186,11 @@ async fn thresholds_hold_on_the_labelled_cases() {
         c.text = redact(&c.text);
         c.reached = kept && words(&c.text) as i64 >= settings.min_words;
     }
-    let scored = screen_all(&cases).await;
+    let raw = screen_all(&cases).await;
+    top_report(&raw);
+    slip_report(&raw);
+    let raw_scores: std::collections::HashMap<String, f64> = raw.iter().map(|(c, s)| (c.id.clone(), s.naturalness)).collect();
+    let scored: Vec<(Case, Screen)> = raw.into_iter().map(|(c, s)| (c, crate::jev::with_rules(s))).collect();
 
     let dump: Vec<_> = scored.iter().map(|(c, s)| Scored { case: c, words: words(&c.text), screen: s }).collect();
     std::fs::write(concat!(env!("CARGO_MANIFEST_DIR"), "/evals/results.json"), serde_json::to_string_pretty(&dump).unwrap())
@@ -151,16 +212,22 @@ async fn thresholds_hold_on_the_labelled_cases() {
         println!("  english     {}", spread(&col(|s| s.english)));
         println!("  prose       {}", spread(&col(|s| s.prose)));
         println!("  naturalness {}", spread(&col(|s| s.naturalness)));
+        println!("  native      {}", spread(&col(|s| s.native.unwrap_or(0.0))));
     }
 
-    println!("\nid  words  english  prose  naturalness  issue(conf)  expected");
+    let agent_natives: Vec<f64> =
+        eligible.iter().filter(|(c, _)| c.kind == "native" && c.id.starts_with("agent-")).map(|(_, s)| s.naturalness).collect();
+    println!("\nagent-style native prompts ({}): naturalness {}", agent_natives.len(), spread(&agent_natives));
+
+    println!("\nid  words  english  prose  native  naturalness  issue(conf)  expected");
     for (c, s) in &eligible {
         println!(
-            "{:<20} {:>3}  {:.2}  {:.2}  {:.2}  {}({:.2})  {}",
+            "{:<20} {:>3}  {:.2}  {:.2}  {:.2}  {:.2}  {}({:.2})  {}",
             c.id,
             words(&c.text),
             s.english,
             s.prose,
+            s.native.unwrap_or(0.0),
             s.naturalness,
             s.issue.key(),
             s.issue_confidence,
@@ -221,6 +288,18 @@ without the prose gate: precision {:.2} ({} false flags)", before.precision(), b
     assert!(range("portuguese", |s| s.english).1 + 0.2 < MIN_ENGLISH, "Portuguese scores too close to the English gate");
     assert!(lowest_english - 0.2 > MIN_ENGLISH, "English scores too close to the English gate");
     assert!(range("native", |s| s.naturalness).0 - 0.2 > settings.flag_threshold, "a natural message sits on the flag threshold");
+
+    // A sentence nothing is wrong with should score the top. The top never takes a message out of the queue:
+    // whatever it lifts had a score at or above the goal already.
+    let of = |kind: &str| eligible.iter().filter(|(c, _)| c.kind == kind).collect::<Vec<_>>();
+    let natives = of("native");
+    let perfect = natives.iter().filter(|(_, s)| s.naturalness >= TOP_SCORE).count() as f64 / natives.len() as f64;
+    println!("native messages at the top: {:.0}%", perfect * 100.0);
+    for (c, s) in eligible.iter().filter(|(_, s)| s.naturalness >= TOP_SCORE) {
+        assert!(raw_scores[&c.id] >= settings.flag_threshold, "{}: the top lifted a message out of the queue", c.id);
+        assert_eq!(s.issue, Issue::None, "{}: a message with an issue scores the top", c.id);
+    }
+    assert!(perfect >= 0.8, "too many natural messages fall short of the top score");
 
     assert!(t.precision() >= 0.95, "too many natural messages or pastes in the queue");
     assert!(t.recall() >= 0.85, "too many flawed messages left out of the queue");

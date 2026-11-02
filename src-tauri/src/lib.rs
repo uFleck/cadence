@@ -13,7 +13,8 @@ mod schedule;
 use chrono::Local;
 use db::Db;
 use model::{
-    Attempt, Coaching, InterviewAnswer, InterviewQuestion, InterviewTopic, Message, MessageQuery, Overview, Patterns, Settings,
+    Attempt, Coaching, InterviewAnswer, InterviewQuestion, InterviewTopic, Message, MessageQuery, Overview, Patterns, Screen, Settings,
+    Spending, UsageKind,
 };
 use pipeline::{now_ms, Core};
 use std::path::PathBuf;
@@ -75,9 +76,21 @@ async fn coach_message(core: Shared<'_>, id: String) -> Result<Coaching, String>
     let attempt = message.attempts.last().ok_or("Write your version first")?;
     let claude = core.claude.as_ref().ok_or("Claude Code CLI not found on PATH")?;
     let hint = message.screen.as_ref().map(|s| s.issue);
-    let coaching = coach::coach(claude, &core.coach_dir, &message.text, &attempt.text, hint, now_ms()).await?;
+    let stdout = coach::ask(claude, &core.coach_dir, &message.text, &attempt.text, hint).await?;
+    // The call is paid for even when its answer cannot be read, so the usage is recorded first.
+    let usage = coach::usage_from(&stdout);
+    let parsed = coach::parse_output(&stdout, hint, now_ms());
+    let _ = core.db.record_usage(UsageKind::Coach, Some(&id), None, &usage, parsed.is_ok(), now_ms());
+    let mut coaching = parsed?;
+    coaching.cost_usd = usage.cost_usd;
     core.db.save_coaching(&id, &coaching).map_err(fail)?;
+    core.db.save_attempt_coaching(attempt.id, &coaching).map_err(fail)?;
     Ok(coaching)
+}
+
+#[tauri::command]
+fn get_message(core: Shared<'_>, id: String) -> Result<Message, String> {
+    core.db.get_message(&id).map_err(fail)?.ok_or_else(|| "That message no longer exists".to_string())
 }
 
 #[tauri::command]
@@ -88,13 +101,31 @@ async fn save_attempt(core: Shared<'_>, id: String, text: String) -> Result<Atte
     }
     let mut attempt = core.db.save_attempt(&id, text, now_ms()).map_err(fail)?;
     // A Jev failure must not lose the attempt: it stays saved, just without a score.
-    if let Some(key) = jev::api_key() {
-        if let Ok(screen) = jev::Jev::new(key).screen(text).await {
-            core.db.save_attempt_screen(attempt.id, &screen).map_err(fail)?;
-            attempt.screen = Some(screen);
-        }
+    if let Some(screen) = screen_text(&core, text, Some(&id), None).await {
+        core.db.save_attempt_screen(attempt.id, &screen).map_err(fail)?;
+        // Reaching the goal settles the message; falling short brings it back to the queue.
+        let goal = core.db.settings().map_err(fail)?.flag_threshold;
+        core.db.settle_after_attempt(&id, screen.naturalness >= goal, now_ms()).map_err(fail)?;
+        attempt.screen = Some(screen);
     }
     Ok(attempt)
+}
+
+/// The screen of a text the user just wrote. Text already screened under the current rubric reuses that
+/// screen, so it costs nothing and scores the same every time. Otherwise Jev is asked and the call recorded.
+/// None when there is no key or Jev fails.
+async fn screen_text(core: &Core, text: &str, message: Option<&str>, answer: Option<i64>) -> Option<Screen> {
+    if let Ok(Some(known)) = core.db.known_screen(text) {
+        return Some(known);
+    }
+    let screen = jev::Jev::new(jev::api_key()?).screen(text).await.ok()?;
+    let _ = core.db.record_usage(UsageKind::Screen, message, answer, &jev::usage(text), true, now_ms());
+    Some(screen)
+}
+
+#[tauri::command]
+fn spending(core: Shared<'_>) -> Result<Spending, String> {
+    core.db.spending(Local::now().date_naive(), 100).map_err(fail)
 }
 
 #[tauri::command]
@@ -220,10 +251,7 @@ async fn review_interview_answer(core: Shared<'_>, id: i64, force: bool) -> Resu
     let claude = core.claude.as_ref().ok_or("Claude Code CLI not found on PATH")?;
 
     // A Jev failure must not fail the review: the old screen (or none) stays.
-    let screen = match jev::api_key() {
-        Some(key) => jev::Jev::new(key).screen(&answer.text).await.ok(),
-        None => None,
-    };
+    let screen = screen_text(&core, &answer.text, None, Some(id)).await;
     let stdout = coach::run_claude(
         claude,
         &core.coach_dir,
@@ -232,7 +260,10 @@ async fn review_interview_answer(core: Shared<'_>, id: i64, force: bool) -> Resu
         &interview::user_prompt(question.topic, &question.text, &answer.text),
     )
     .await?;
-    let feedback = interview::parse_output(&stdout, now_ms())?;
+    let usage = coach::usage_from(&stdout);
+    let parsed = interview::parse_output(&stdout, now_ms());
+    let _ = core.db.record_usage(UsageKind::Interview, None, Some(id), &usage, parsed.is_ok(), now_ms());
+    let feedback = parsed?;
     core.db.save_interview_review(id, screen.as_ref(), &feedback).map_err(fail)?;
     core.db.get_interview_answer(id).map_err(fail)?.ok_or_else(|| "That answer no longer exists".to_string())
 }
@@ -376,6 +407,8 @@ pub fn run() {
             overview,
             list_messages,
             coach_message,
+            get_message,
+            spending,
             save_attempt,
             set_excluded,
             mark_reviewed,

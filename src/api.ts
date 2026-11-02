@@ -25,8 +25,12 @@ export interface Screen {
   english: number;
   /** Probability 0..1 that a person wrote it as sentences, not a pasted log, stack trace, code or tool output. */
   prose: number;
-  /** 0 (clearly unnatural) .. 3 (fully natural). */
+  /** 0 (clearly unnatural) .. 3 (fully natural). 3 exactly when `native` reaches the native gate. */
   naturalness: number;
+  /** Probability 0..1 that a native speaker would change nothing in the wording; null before rubric 1. */
+  native: number | null;
+  /** The version of the questions Jev was asked. Scores from different rubrics are not compared. */
+  rubric: number;
   /** 0..1 */
   confidence: number;
   issue: Issue;
@@ -48,6 +52,8 @@ export interface Coaching {
   issue: Issue;
   /** Epoch ms */
   createdAt: number;
+  /** What the `claude -p` call behind this coaching cost, in USD. Null for older coaching, or when the CLI reported none. */
+  costUsd: number | null;
 }
 
 export interface Attempt {
@@ -57,6 +63,8 @@ export interface Attempt {
   createdAt: number;
   /** How natural this version sounds. Null when it was saved before attempts were scored, or Jev was unreachable. */
   screen: Screen | null;
+  /** The review of this version. Null until it was reviewed (or when the review failed and can be retried). */
+  coaching: Coaching | null;
 }
 
 export interface Message {
@@ -68,7 +76,9 @@ export interface Message {
   words: number;
   source: "transcript" | "history";
   screen: Screen | null;
+  /** The review of the latest attempt (the same object as `attempts[attempts.length - 1].coaching`). */
   coaching: Coaching | null;
+  /** Oldest first. */
   attempts: Attempt[];
   /** Epoch ms when the user marked it reviewed, or null. */
   reviewedAt: number | null;
@@ -76,7 +86,8 @@ export interface Message {
   excludedAt: number | null;
 }
 
-export type MessageFilter = "queue" | "reviewed" | "all" | "excluded";
+/** `rewritten`: messages the user wrote a new version of, most recently rewritten first. */
+export type MessageFilter = "queue" | "reviewed" | "rewritten" | "all" | "excluded";
 
 export interface MessageQuery {
   filter: MessageFilter;
@@ -235,12 +246,94 @@ export interface InterviewAnswer {
   feedback: InterviewFeedback | null;
 }
 
+export type UsageKind = "coach" | "interview" | "screen";
+
+export const USAGE_KIND_LABEL: Record<UsageKind, string> = {
+  coach: "Rewrite reviews",
+  interview: "Interview feedback",
+  screen: "TypeSafe screens",
+};
+
+/**
+ * Spending over one period. `costUsd` adds Claude and TypeSafe. Claude's part is the list-price cost `claude -p`
+ * reports, so on a subscription it is the equivalent API cost, not a charge. TypeSafe's part is an estimate:
+ * Jev bills input tokens only ($0.042 per million) and its response has no token count, so the input is
+ * estimated from the request size.
+ */
+export interface UsageTotals {
+  claudeCalls: number;
+  /** Included in `costUsd` as an estimate. */
+  jevCalls: number;
+  costUsd: number;
+  inputTokens: number;
+  outputTokens: number;
+  /** Cache reads plus cache writes. */
+  cacheTokens: number;
+}
+
+export interface DayCost {
+  /** Local date, yyyy-mm-dd */
+  day: string;
+  costUsd: number;
+  claudeCalls: number;
+  jevCalls: number;
+}
+
+export interface KindCost {
+  kind: UsageKind;
+  calls: number;
+  costUsd: number;
+}
+
+/** One Claude call (Jev screens are counted and priced in the totals, but not listed one by one). */
+export interface UsageCall {
+  id: number;
+  /** Epoch ms */
+  at: number;
+  kind: UsageKind;
+  /** The start of the message or interview answer the call was about. */
+  preview: string | null;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  /** Null when the CLI reported none. */
+  costUsd: number | null;
+  durationMs: number;
+  /** False when the call ran but its answer could not be read. */
+  ok: boolean;
+}
+
+export interface Spending {
+  today: UsageTotals;
+  /** Last 7 local days, today included. */
+  week: UsageTotals;
+  /** Last 30 local days, today included. */
+  month: UsageTotals;
+  allTime: UsageTotals;
+  /** Last 30 local days, oldest first, one row per day (zeros where nothing was spent). */
+  days: DayCost[];
+  byKind: KindCost[];
+  /** Newest first, at most 100. */
+  recent: UsageCall[];
+  /** Epoch ms of the first tracked call, or null before any. Spending from before tracking is not counted. */
+  since: number | null;
+}
+
 export const api = {
   overview: () => invoke<Overview>("overview"),
   listMessages: (query: MessageQuery) => invoke<Message[]>("list_messages", { query }),
-  /** `force` coaches again and replaces the saved coaching; the old one stays if the new call fails. */
+  /** The message as it is stored now, with its attempts and their reviews. */
+  getMessage: (id: string) => invoke<Message>("get_message", { id }),
+  /** Reviews the latest saved version and stores the review on that version; an earlier version keeps its own. */
   coachMessage: (id: string) => invoke<Coaching>("coach_message", { id }),
+  /**
+   * Saves a new version and scores it. Reaching `Settings.flagThreshold` marks the message reviewed;
+   * falling short puts it (back) in the queue. Read the message again to see the result.
+   */
   saveAttempt: (id: string, text: string) => invoke<Attempt>("save_attempt", { id, text }),
+  spending: () => invoke<Spending>("spending"),
   markReviewed: (id: string, reviewed: boolean) => invoke<void>("mark_reviewed", { id, reviewed }),
   setExcluded: (id: string, excluded: boolean) => invoke<void>("set_excluded", { id, excluded }),
   patterns: () => invoke<Patterns>("patterns"),

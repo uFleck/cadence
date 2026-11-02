@@ -115,13 +115,47 @@ pub struct InterviewAnswer {
 pub const MIN_ENGLISH: f64 = 0.5;
 pub const MIN_PROSE: f64 = 0.5;
 
+/// The top of the naturalness scale.
+pub const TOP_SCORE: f64 = 3.0;
+/// Jev's `score` is the probability-weighted mean of its four levels, so it never reaches 3 even for a
+/// sentence nothing is wrong with. A separate yes/no question asks whether a native speaker would change
+/// anything. A message scores `TOP_SCORE` when that answer reaches `MIN_NATIVE`, Jev names no issue, and its
+/// own score already reaches `MIN_TOP_FROM`. The yes/no answer alone also passes subtle mistakes (a false
+/// friend, a wrong register), so the top only ever lifts a message that was not flagged anyway.
+pub const MIN_NATIVE: f64 = 0.5;
+pub const MIN_TOP_FROM: f64 = 2.0;
+
+/// Jev's score misses mistakes that still read as grammatical: a false friend ("realize the migration"), a
+/// Portuguese phrase translated word for word, a blunt register. A separate question looks for them; at or
+/// above this confidence the message scores at most `SLIP_SCORE`, below the default goal, so it reaches the
+/// queue, and takes that issue when Jev named none. The confidence is low because the answer is rare: on the
+/// eval it never fired on a native message, while real slips came in at 0.39 and 0.41.
+pub const MIN_SLIP: f64 = 0.3;
+pub const SLIP_SCORE: f64 = 1.9;
+
+/// The version of the questions Jev is asked (`jev::questions`). Bump it whenever they change: scores
+/// made under different questions are not compared, and the original of a rewritten message is screened
+/// again so it can be compared with the new version.
+pub const RUBRIC: i64 = 2;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Screen {
     pub english: f64,
     /// Probability that the text is sentences a person wrote, not a pasted log, stack trace, code or tool output.
     pub prose: f64,
+    /// `TOP_SCORE` when `native` reaches `MIN_NATIVE`, otherwise Jev's score.
     pub naturalness: f64,
+    /// Probability that a fluent native speaker would change nothing in the wording. None before rubric 1.
+    #[serde(default)]
+    pub native: Option<f64>,
+    /// The `RUBRIC` this screen was made under; 0 for screens saved before rubrics existed.
+    #[serde(default)]
+    pub rubric: i64,
+    /// The subtle mistake Jev's `slip` question found, if any, with its confidence. Only the eval reads them;
+    /// `jev::with_rules` has already folded them into `naturalness` and `issue`, so they are not stored.
+    #[serde(skip)]
+    pub slip: Option<(Issue, f64)>,
     pub confidence: f64,
     pub issue: Issue,
     pub issue_confidence: f64,
@@ -141,6 +175,10 @@ pub struct Coaching {
     pub tip: String,
     pub issue: Issue,
     pub created_at: i64,
+    /// What the `claude -p` call that wrote this coaching cost, in USD. None for coaching saved before
+    /// costs were tracked, or when the CLI did not report one.
+    #[serde(default)]
+    pub cost_usd: Option<f64>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -152,6 +190,117 @@ pub struct Attempt {
     /// How natural the attempt sounds, so the card can show progress against the original. None when
     /// the attempt was saved before attempts were scored, or when Jev could not be reached.
     pub screen: Option<Screen>,
+    /// The review of this version. Every version keeps its own, so the history stays readable.
+    pub coaching: Option<Coaching>,
+}
+
+/// What one `claude -p` call used, read from its JSON envelope. Every field is optional there, so a
+/// missing one counts as zero or None.
+#[derive(Clone, Debug, Default)]
+pub struct Usage {
+    pub model: String,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    pub cache_read_tokens: i64,
+    pub cache_write_tokens: i64,
+    pub cost_usd: Option<f64>,
+    pub duration_ms: i64,
+}
+
+#[derive(Serialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum UsageKind {
+    /// A review of a rewrite (`claude -p`).
+    Coach,
+    /// Feedback on an interview answer (`claude -p`).
+    Interview,
+    /// One TypeSafe Jev screen. TypeSafe does not report a cost, so these are only counted.
+    Screen,
+}
+
+impl UsageKind {
+    pub fn key(self) -> &'static str {
+        match self {
+            UsageKind::Coach => "coach",
+            UsageKind::Interview => "interview",
+            UsageKind::Screen => "screen",
+        }
+    }
+
+    pub fn parse(key: &str) -> UsageKind {
+        match key {
+            "coach" => UsageKind::Coach,
+            "interview" => UsageKind::Interview,
+            _ => UsageKind::Screen,
+        }
+    }
+}
+
+/// Spending over one period. `cost_usd` is Claude only: it is what `claude -p` reports at list prices,
+/// so on a subscription it is the equivalent API cost, not a charge.
+#[derive(Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageTotals {
+    pub claude_calls: i64,
+    pub jev_calls: i64,
+    pub cost_usd: f64,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    pub cache_tokens: i64,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DayCost {
+    /// Local date, yyyy-mm-dd
+    pub day: String,
+    pub cost_usd: f64,
+    pub claude_calls: i64,
+    pub jev_calls: i64,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct KindCost {
+    pub kind: UsageKind,
+    pub calls: i64,
+    pub cost_usd: f64,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageCall {
+    pub id: i64,
+    pub at: i64,
+    pub kind: UsageKind,
+    /// The start of the message or interview answer the call was about.
+    pub preview: Option<String>,
+    pub model: String,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    pub cache_read_tokens: i64,
+    pub cache_write_tokens: i64,
+    pub cost_usd: Option<f64>,
+    pub duration_ms: i64,
+    pub ok: bool,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Spending {
+    pub today: UsageTotals,
+    /// The last 7 local days, today included.
+    pub week: UsageTotals,
+    /// The last 30 local days, today included.
+    pub month: UsageTotals,
+    pub all_time: UsageTotals,
+    /// The last 30 local days, oldest first, with a row for every day (zeros where nothing was spent).
+    pub days: Vec<DayCost>,
+    pub by_kind: Vec<KindCost>,
+    /// Newest first.
+    pub recent: Vec<UsageCall>,
+    /// Epoch ms of the first tracked call, or None before any. Spending from before tracking is not counted.
+    pub since: Option<i64>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -176,6 +325,8 @@ pub struct Message {
 pub enum MessageFilter {
     Queue,
     Reviewed,
+    /// Messages the user wrote at least one new version of, most recently rewritten first.
+    Rewritten,
     All,
     Excluded,
 }

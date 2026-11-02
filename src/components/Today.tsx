@@ -2,7 +2,7 @@ import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "r
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { api, type Message, type Overview, type Patterns, type TrendRow } from "../api";
 import { CountUp, EASE, SOFT_SPRING, rise, stagger } from "../motion";
-import { IssueChip, Meter, ago, errorText, type Notify } from "./shared";
+import { IssueChip, Meter, ago, currentScore, errorText, type Notify } from "./shared";
 import { MessageCard } from "./MessageCard";
 import "../styles/today.css";
 
@@ -259,11 +259,21 @@ type RowProps = {
   intro: boolean;
   onToggle: () => void;
   notify: Notify;
+  onChange: (message: Message) => void;
   onReviewed: () => void;
 };
 
+/** Worst first by how each message sounds now; ones that were never screened go last. */
+function sortQueue(list: Message[]): Message[] {
+  return [...list].sort((a, b) => {
+    const [x, y] = [currentScore(a), currentScore(b)];
+    if (x === null || y === null) return x !== null ? -1 : y !== null ? 1 : b.ts - a.ts;
+    return x - y || b.ts - a.ts;
+  });
+}
+
 // forwardRef: AnimatePresence popLayout needs the DOM node of the exiting row.
-const Row = forwardRef<HTMLLIElement, RowProps>(function Row({ m, i, open, intro, onToggle, notify, onReviewed }, ref) {
+const Row = forwardRef<HTMLLIElement, RowProps>(function Row({ m, i, open, intro, onToggle, notify, onChange, onReviewed }, ref) {
   const reduce = useReducedMotion();
   const openRef = useRef(open);
   openRef.current = open;
@@ -292,7 +302,8 @@ const Row = forwardRef<HTMLLIElement, RowProps>(function Row({ m, i, open, intro
           <span className="t-side">
             {m.screen ? (
               <>
-                <Meter value={m.screen.naturalness} />
+                {m.attempts.length > 0 && <span className="t-meta">{m.attempts.length === 1 ? "1 try" : `${m.attempts.length} tries`}</span>}
+                <Meter value={currentScore(m) ?? m.screen.naturalness} />
                 <IssueChip issue={m.screen.issue} />
               </>
             ) : (
@@ -318,7 +329,7 @@ const Row = forwardRef<HTMLLIElement, RowProps>(function Row({ m, i, open, intro
             >
               <div className="t-body-in">
                 {/* Reviewing a message and setting it aside both take it out of the queue. */}
-                <MessageCard message={m} notify={notify} onReviewed={onReviewed} onExcluded={onReviewed} />
+                <MessageCard message={m} notify={notify} onChange={onChange} onReviewed={onReviewed} onExcluded={onReviewed} />
               </div>
             </motion.div>
           )}
@@ -339,7 +350,8 @@ export function Today({ version, overview, notify, onRunNow }: { version: number
   const load = useCallback(() => {
     api.listMessages({ filter: "queue", limit: QUEUE_LIMIT, offset: 0 }).then(
       (list) => {
-        setQueue(list);
+        // Sorted once, here: a row must not jump while its card is open and the user is reading it.
+        setQueue(sortQueue(list));
         setError(null);
       },
       (e) => setError(errorText(e)),
@@ -362,15 +374,7 @@ export function Today({ version, overview, notify, onRunNow }: { version: number
     return () => clearTimeout(t);
   }, [ready]);
 
-  const sorted = useMemo(
-    () =>
-      queue &&
-      [...queue].sort((a, b) => {
-        if (!a.screen || !b.screen) return a.screen ? -1 : b.screen ? 1 : b.ts - a.ts;
-        return a.screen.naturalness - b.screen.naturalness || b.ts - a.ts;
-      }),
-    [queue],
-  );
+  const sorted = queue;
   const sum = useMemo(() => (patterns ? summarize(patterns.trend, now) : null), [patterns, now]);
 
   if (sorted === null) {
@@ -398,7 +402,9 @@ export function Today({ version, overview, notify, onRunNow }: { version: number
   }
 
   // The queue is capped at QUEUE_LIMIT; past the cap the overview holds the real total.
-  const total = sorted.length >= QUEUE_LIMIT && overview ? overview.queued : sorted.length;
+  // A row whose new version reached the goal stays until the next load so the card does not vanish under the reader.
+  const waiting = sorted.filter((m) => m.reviewedAt === null).length;
+  const total = sorted.length >= QUEUE_LIMIT && overview ? overview.queued : waiting;
   const date = new Date(now).toLocaleDateString("en", { weekday: "long", day: "numeric", month: "long" });
   const lead =
     total === 0
@@ -441,6 +447,7 @@ export function Today({ version, overview, notify, onRunNow }: { version: number
                   intro={intro.current}
                   onToggle={() => setOpenId((cur) => (cur === m.id ? null : m.id))}
                   notify={notify}
+                  onChange={(fresh) => setQueue((list) => list?.map((x) => (x.id === fresh.id ? fresh : x)) ?? list)}
                   onReviewed={() => {
                     setOpenId((cur) => (cur === m.id ? null : cur));
                     setQueue((list) => list?.filter((x) => x.id !== m.id) ?? list);
