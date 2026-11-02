@@ -4,6 +4,7 @@ import { api, type Attempt, type Coaching, type Message } from "../api";
 import { loadDraft, storeDraft } from "../drafts";
 import { EASE, rise, stagger } from "../motion";
 import "../styles/messages.css";
+import { ScoreTrail } from "./ScoreTrail";
 import { ago, errorText, IssueChip, Meter, scoreChange, usd, type Notify } from "./shared";
 
 // The "Remember" callout slides in from the side, after the sections above it have landed.
@@ -44,8 +45,14 @@ function CostChip({ coaching }: { coaching: Coaching }) {
 }
 
 /** The versions the user already wrote, newest first, each with its score and what the coach said about it. */
+const VISIBLE_VERSIONS = 4;
+
 function VersionHistory({ attempts, defaultOpen }: { attempts: Attempt[]; defaultOpen: boolean }) {
+  const [all, setAll] = useState(false);
   if (attempts.length === 0) return null;
+  const newestFirst = attempts.map((a, i) => ({ a, n: i + 1 })).reverse();
+  const hidden = Math.max(0, newestFirst.length - VISIBLE_VERSIONS);
+  const shown = all ? newestFirst : newestFirst.slice(0, VISIBLE_VERSIONS);
   return (
     <details className="versions" open={defaultOpen}>
       <summary>
@@ -54,11 +61,17 @@ function VersionHistory({ attempts, defaultOpen }: { attempts: Attempt[]; defaul
         <span className="count-pill">{attempts.length}</span>
       </summary>
       <ol className="ver-list">
-        {attempts
-          .map((a, i) => ({ a, n: i + 1 }))
-          .reverse()
-          .map(({ a, n }) => (
-            <li key={a.id} className="ver">
+        <AnimatePresence initial={false}>
+          {shown.map(({ a, n }, i) => (
+            <motion.li
+              key={a.id}
+              layout="position"
+              className="ver"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}
+              transition={{ duration: 0.34, ease: EASE, delay: all && i >= VISIBLE_VERSIONS ? 0.04 * (i - VISIBLE_VERSIONS) : 0 }}
+            >
               <div className="ver-top">
                 <span className="trail-label">Try {n}</span>
                 <span className="muted" title={new Date(a.createdAt).toLocaleString()}>
@@ -88,9 +101,16 @@ function VersionHistory({ attempts, defaultOpen }: { attempts: Attempt[]; defaul
               ) : (
                 <span className="muted">Not reviewed</span>
               )}
-            </li>
+            </motion.li>
           ))}
+        </AnimatePresence>
       </ol>
+      {hidden > 0 && (
+        <button type="button" className="btn btn-ghost sm ver-more" onClick={() => setAll((v) => !v)} aria-expanded={all}>
+          <i className={all ? "ph ph-caret-up" : "ph ph-caret-down"} aria-hidden="true" />
+          {all ? "Show fewer" : `Show ${hidden} older`}
+        </button>
+      )}
     </details>
   );
 }
@@ -309,14 +329,7 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
               {latest ? <p className="attempt-text">{latest.text}</p> : <p className="muted">No attempt saved.</p>}
               {trail.length > 1 && (
                 <div className="progress">
-                  <ol className="trail" aria-label="Naturalness of each version">
-                    {trail.map((step) => (
-                      <li key={step.label}>
-                        <span className="trail-label">{step.label}</span>
-                        <Meter value={step.value} />
-                      </li>
-                    ))}
-                  </ol>
+                  <ScoreTrail steps={trail} />
                   {delta !== null && (
                     <span className={`delta ${delta > 0 ? "up" : delta < 0 ? "down" : "flat"}`}>
                       {delta === 0 ? "No change" : `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}`} since your original

@@ -3,7 +3,7 @@
 //!
 //!     cargo test --lib jev_eval -- --ignored --nocapture
 //!
-//! `evals/cases.json` holds 127 labelled messages. Raw answers go to `evals/results.json` so the sweep can be
+//! `evals/cases.json` holds 132 labelled messages. Raw answers go to `evals/results.json` so the sweep can be
 //! inspected without calling the API again.
 
 use crate::ingest;

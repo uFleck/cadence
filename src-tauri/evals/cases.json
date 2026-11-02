@@ -115,7 +115,6 @@
   {"id":"path-native-06","kind":"native","text":"Can you review this https://github.com/acme/shop/pull/412 PR before I merge it into main?"},
   {"id":"path-native-07","kind":"native","text":"src/components/MessageList.tsx renders twice on every refresh, can you find out why that happens?"},
   {"id":"path-native-08","kind":"native","text":"Please compare src/Core/PaymentStateService.cs, src/UIShared/PaymentStateService.cs and C:\\Projects\\shop\\src\\Api\\PaymentStateService.cs and tell me which one the app uses."},
-  {"id":"agent-native-01","kind":"native","text":"Do I have 'just' installed? If not, install it"},
   {"id":"agent-native-02","kind":"native","text":"do we already have a retry helper somewhere? if so, use it instead of writing a new one"},
   {"id":"agent-native-03","kind":"native","text":"Run `make test` and tell me which tests fail"},
   {"id":"agent-native-04","kind":"native","text":"Is 'go' on my PATH? If not, tell me how to install it"},
@@ -128,5 +127,11 @@
   {"id":"agent-flawed-01","kind":"flawed","issue":"word_choice","text":"do I have just installed? if not, install it"},
   {"id":"agent-flawed-02","kind":"flawed","issue":"grammar","text":"Run the tests again and tell me what are failing now"},
   {"id":"agent-flawed-03","kind":"flawed","issue":"preposition_collocation","text":"Please check if this function is called in some place of the code"},
-  {"id":"agent-flawed-04","kind":"flawed","issue":"pt_calque","text":"make a test for that, but don't forget to run it after to see if it passes"}
+  {"id":"agent-flawed-04","kind":"flawed","issue":"pt_calque","text":"make a test for that, but don't forget to run it after to see if it passes"},
+  {"id":"names-native-02","kind":"native","text":"Why does GetSafeReturnUrlAsync return null when the Solider session has already expired?"},
+  {"id":"names-native-03","kind":"native","text":"Can you rename the RecoverPasswordBySms view so it matches how Hopper names its routes?"},
+  {"id":"names-native-04","kind":"native","text":"Does the Umbler webhook retry when Blazor throws a 500 inside OnInitializedAsync?"},
+  {"id":"names-flawed-01","kind":"flawed","issue":"grammar","text":"Where I can configure the ReturnUrl to point to Solider?"},
+  {"id":"names-flawed-02","kind":"flawed","issue":"grammar","text":"Why the GetSafeReturnUrlAsync is returning null when Solider session was expired?"},
+  {"id":"names-flawed-03","kind":"flawed","issue":"preposition_collocation","text":"Can you check if the RecoverPasswordBySms view is called in some place of the Solider project?"}
 ]

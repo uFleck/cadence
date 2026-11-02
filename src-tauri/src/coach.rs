@@ -1,4 +1,4 @@
-use crate::model::{Coaching, Issue, Rewrite, Usage};
+use crate::model::{Coaching, Issue, Rewrite, Screen, Usage};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
@@ -19,6 +19,9 @@ In that chat a missing final period, a lowercase first letter and short imperati
 A tool, command or package name that is also an English word (just, make, go, node) is fine when it is in quotes or backticks. \
 You get one message they wrote, the new version they wrote after reading it again, and a hint about what may sound off in the original. \
 Review their new version, not the original: say what still sounds off in it, and if it already sounds natural, say so and say what they improved. \
+The message may also carry the verdict of an automatic naturalness screen (Jev) on the new version: it is the judge, so never contradict it. \
+When the version passed, say it sounds natural and what they improved over the original, and do not list optional polish (capital letters, a synonym you would prefer, a different style). \
+When it fell short, explain what holds it back, starting from the issue the screen named. Do not quote the score: the app already shows it. \
 Keep their meaning and level of detail. Do not add content. Do not make it more formal than needed. \
 If the new version already sounds natural, make the rewrites small variations. \
 File names such as Program.cs and site names such as github.com stand in for full paths and links that were shortened on purpose: keep the names as they are in the rewrites and do not comment on them. \
@@ -66,14 +69,50 @@ fn schema() -> Value {
     })
 }
 
-fn user_prompt(original: &str, attempt: &str, hint: Option<Issue>) -> String {
+/// What Jev made of the new version, handed to the coach so its review agrees with the score on the card.
+#[derive(Clone, Copy, Debug)]
+pub struct Verdict {
+    pub score: f64,
+    pub goal: f64,
+    pub issue: Issue,
+}
+
+impl Verdict {
+    pub fn of(screen: &Screen, goal: f64) -> Verdict {
+        Verdict { score: screen.naturalness, goal, issue: screen.issue }
+    }
+
+    fn describe(&self) -> String {
+        let issue = match self.issue {
+            Issue::None => "named no issue".to_string(),
+            i => format!("named this issue: {}", i.key()),
+        };
+        if self.score >= self.goal {
+            format!(
+                "Verdict of the automatic screen on their new version: {:.1} out of 3, the goal is {:.1}, so it PASSED and the screen {issue}. \
+                 Treat it as natural: do not contradict it or list optional polish. Name a problem only if it is a plain error that would \
+                 confuse a reader. Keep the rewrites to small variations.",
+                self.score, self.goal
+            )
+        } else {
+            format!(
+                "Verdict of the automatic screen on their new version: {:.1} out of 3, below the goal of {:.1}, so it FELL SHORT and the screen {issue}. \
+                 Do not call it natural. Explain what holds it back.",
+                self.score, self.goal
+            )
+        }
+    }
+}
+
+fn user_prompt(original: &str, attempt: &str, hint: Option<Issue>, verdict: Option<Verdict>) -> String {
     let hint = match hint {
         Some(Issue::None) | None => "none".to_string(),
         Some(i) => i.key().to_string(),
     };
+    let verdict = verdict.map(|v| format!("{}\n\n", v.describe())).unwrap_or_default();
     format!(
         "Original message:\n\"\"\"\n{original}\n\"\"\"\n\nTheir new version:\n\"\"\"\n{attempt}\n\"\"\"\n\n\
-         Hint from an automatic screen of the original (may be wrong): {hint}\n\n\
+         Hint from an automatic screen of the original (may be wrong): {hint}\n\n{verdict}\
          Return two rewrites of their new version, one casual (how you would say it in a chat with a teammate) and one \
          professional (for a manager or client). Then a short explanation of what still sounds off in the new version, \
          or why it sounds natural (two or three sentences), one reusable tip to remember, and the main issue of the original."
@@ -163,8 +202,15 @@ pub fn usage_from(stdout: &str) -> Usage {
 /// Asks Claude Code (the user's own login) to review the user's new version of a message and returns the
 /// raw envelope: the caller records its usage, then parses it with `parse_output`. `cwd` must be a folder
 /// that ingestion skips, so the call does not end up in the user's practice material.
-pub async fn ask(claude: &Path, cwd: &Path, original: &str, attempt: &str, hint: Option<Issue>) -> Result<String, String> {
-    run_claude(claude, cwd, SYSTEM_PROMPT, &schema(), &user_prompt(original, attempt, hint)).await
+pub async fn ask(
+    claude: &Path,
+    cwd: &Path,
+    original: &str,
+    attempt: &str,
+    hint: Option<Issue>,
+    verdict: Option<Verdict>,
+) -> Result<String, String> {
+    run_claude(claude, cwd, SYSTEM_PROMPT, &schema(), &user_prompt(original, attempt, hint, verdict)).await
 }
 
 /// Runs one `claude -p` call (no tools, no settings, no session) and returns its stdout envelope.
@@ -240,8 +286,17 @@ mod tests {
 
     #[test]
     fn the_prompt_carries_both_the_original_and_the_new_version() {
-        let p = user_prompt("take this", "look at this", None);
+        let p = user_prompt("take this", "look at this", None, None);
         assert!(p.contains("take this") && p.contains("look at this"));
+        assert!(!p.contains("Verdict"));
+    }
+
+    #[test]
+    fn the_prompt_carries_jevs_verdict_on_the_new_version() {
+        let passed = user_prompt("a", "b", None, Some(Verdict { score: 3.0, goal: 2.0, issue: Issue::None }));
+        assert!(passed.contains("3.0 out of 3") && passed.contains("PASSED"));
+        let short = user_prompt("a", "b", None, Some(Verdict { score: 1.2, goal: 2.0, issue: Issue::PtCalque }));
+        assert!(short.contains("FELL SHORT") && short.contains("pt_calque"));
     }
 
     #[test]

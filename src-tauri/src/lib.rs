@@ -76,7 +76,9 @@ async fn coach_message(core: Shared<'_>, id: String) -> Result<Coaching, String>
     let attempt = message.attempts.last().ok_or("Write your version first")?;
     let claude = core.claude.as_ref().ok_or("Claude Code CLI not found on PATH")?;
     let hint = message.screen.as_ref().map(|s| s.issue);
-    let stdout = coach::ask(claude, &core.coach_dir, &message.text, &attempt.text, hint).await?;
+    let goal = core.db.settings().map_err(fail)?.flag_threshold;
+    let verdict = attempt.screen.as_ref().map(|s| coach::Verdict::of(s, goal));
+    let stdout = coach::ask(claude, &core.coach_dir, &message.text, &attempt.text, hint, verdict).await?;
     // The call is paid for even when its answer cannot be read, so the usage is recorded first.
     let usage = coach::usage_from(&stdout);
     let parsed = coach::parse_output(&stdout, hint, now_ms());
