@@ -1,10 +1,10 @@
 import { AnimatePresence, motion, type Variants } from "motion/react";
-import { useState } from "react";
-import { api, type Attempt, type Coaching, type Message } from "../api";
+import { useMemo, useState } from "react";
+import { api, type Coaching, type Message, type Screen } from "../api";
+import { wordDiff } from "../diff";
 import { loadDraft, storeDraft } from "../drafts";
 import { EASE, rise, stagger } from "../motion";
 import "../styles/messages.css";
-import { ScoreTrail } from "./ScoreTrail";
 import { ago, errorText, IssueChip, Meter, scoreChange, usd, type Notify } from "./shared";
 
 // The "Remember" callout slides in from the side, after the sections above it have landed.
@@ -22,6 +22,10 @@ const expand = {
 
 const REGISTER_ICON = { casual: "ph-chat-teardrop", professional: "ph-briefcase" } as const;
 
+/** With more steps than this the middle of the timeline folds, keeping the original and the newest tries in view. */
+const FOLD_AT = 6;
+const TAIL = 3;
+
 type CardProps = {
   /** The parent owns the message: the card shows what it is given and reports every change through `onChange`. */
   message: Message;
@@ -31,6 +35,18 @@ type CardProps = {
   onReviewed?: () => void;
   /** Called after the message was set aside or put back, so the list can drop or reload it. */
   onExcluded?: () => void;
+};
+
+/** One step of the timeline: the original, a saved try, or the try that is being scored right now. */
+type Step = {
+  key: string;
+  index: number;
+  label: string;
+  text: string;
+  createdAt: number | null;
+  screen: Screen | null;
+  coaching: Coaching | null;
+  kind: "original" | "attempt" | "pending";
 };
 
 /** What a review cost, at Claude's list prices. Renders nothing for a review saved before costs were tracked. */
@@ -44,91 +60,87 @@ function CostChip({ coaching }: { coaching: Coaching }) {
   );
 }
 
-/** The versions the user already wrote, newest first, each with its score and what the coach said about it. */
-const VISIBLE_VERSIONS = 4;
-
-function VersionHistory({ attempts, defaultOpen }: { attempts: Attempt[]; defaultOpen: boolean }) {
-  const [all, setAll] = useState(false);
-  if (attempts.length === 0) return null;
-  const newestFirst = attempts.map((a, i) => ({ a, n: i + 1 })).reverse();
-  const hidden = Math.max(0, newestFirst.length - VISIBLE_VERSIONS);
-  const shown = all ? newestFirst : newestFirst.slice(0, VISIBLE_VERSIONS);
+/** How far the score moved from the step before. Never colour alone: the arrow and the sign say it too. */
+function DeltaChip({ before, after }: { before: Screen; after: Screen }) {
+  const d = scoreChange(before, after);
+  if (d === null) return null;
+  const tone = d > 0 ? "up" : d < 0 ? "down" : "flat";
   return (
-    <details className="versions" open={defaultOpen}>
+    <motion.span
+      className={`dchip ${tone}`}
+      initial={{ opacity: 0, scale: 0.4 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "spring", stiffness: 520, damping: 16 }}
+    >
+      {d !== 0 && <i className={`ph ${d > 0 ? "ph-arrow-up" : "ph-arrow-down"}`} aria-hidden="true" />}
+      {d === 0 ? "No change" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`}
+    </motion.span>
+  );
+}
+
+/** A version's text. Against the step before it, the added words are marked and the removed ones struck through. */
+function VersionText({ before, after }: { before: string | null; after: string }) {
+  const parts = useMemo(() => (before === null ? null : wordDiff(before, after)), [before, after]);
+  const [changes, setChanges] = useState(true);
+  if (!parts) return <p className="attempt-text">{after}</p>;
+  return (
+    <>
+      <p className="attempt-text">
+        {changes ? parts.map((p, i) => (p.kind === "add" ? <ins key={i}>{p.text}</ins> : p.kind === "del" ? <del key={i}>{p.text}</del> : p.text)) : after}
+      </p>
+      <button type="button" className="btn btn-ghost sm tl-changes" aria-pressed={changes} onClick={() => setChanges((v) => !v)}>
+        <i className={changes ? "ph ph-eye-slash" : "ph ph-eye"} aria-hidden="true" />
+        {changes ? "Hide changes" : "Show changes"}
+      </button>
+    </>
+  );
+}
+
+/** The short form of a review, for a try that is no longer the newest. */
+function CoachNotes({ coaching }: { coaching: Coaching }) {
+  return (
+    <details className="ver-coach">
       <summary>
-        <i className="ph ph-clock-counter-clockwise" aria-hidden="true" />
-        Earlier versions
-        <span className="count-pill">{attempts.length}</span>
+        What the coach said
+        <CostChip coaching={coaching} />
       </summary>
-      <ol className="ver-list">
-        <AnimatePresence initial={false}>
-          {shown.map(({ a, n }, i) => (
-            <motion.li
-              key={a.id}
-              layout="position"
-              className="ver"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, transition: { duration: 0.12 } }}
-              transition={{ duration: 0.34, ease: EASE, delay: all && i >= VISIBLE_VERSIONS ? 0.04 * (i - VISIBLE_VERSIONS) : 0 }}
-            >
-              <div className="ver-top">
-                <span className="trail-label">Try {n}</span>
-                <span className="muted" title={new Date(a.createdAt).toLocaleString()}>
-                  {ago(a.createdAt)}
-                </span>
-                {a.screen && <Meter value={a.screen.naturalness} />}
-              </div>
-              <p className="attempt-text">{a.text}</p>
-              {a.coaching ? (
-                <details className="ver-coach">
-                  <summary>
-                    What the coach said
-                    <CostChip coaching={a.coaching} />
-                  </summary>
-                  <p>{a.coaching.explanation}</p>
-                  <ul>
-                    {a.coaching.rewrites.map((r, i) => (
-                      <li key={i}>
-                        <span className={`reg ${r.register}`}>{r.register}</span> {r.text}
-                      </li>
-                    ))}
-                  </ul>
-                  <p>
-                    <strong>Remember</strong> {a.coaching.tip}
-                  </p>
-                </details>
-              ) : (
-                <span className="muted">Not reviewed</span>
-              )}
-            </motion.li>
-          ))}
-        </AnimatePresence>
-      </ol>
-      {hidden > 0 && (
-        <button type="button" className="btn btn-ghost sm ver-more" onClick={() => setAll((v) => !v)} aria-expanded={all}>
-          <i className={all ? "ph ph-caret-up" : "ph ph-caret-down"} aria-hidden="true" />
-          {all ? "Show fewer" : `Show ${hidden} older`}
-        </button>
-      )}
+      <p>{coaching.explanation}</p>
+      {coaching.assumption && <p className="muted">{coaching.assumption}</p>}
+      <ul>
+        {coaching.rewrites.map((r, i) => (
+          <li key={i}>
+            <span className={`reg ${r.register}`}>{r.register}</span> {r.text}
+          </li>
+        ))}
+      </ul>
+      <p>
+        <strong>Remember</strong> {coaching.tip}
+      </p>
     </details>
   );
 }
 
 export function MessageCard({ message, notify, onChange, onReviewed, onExcluded }: CardProps) {
   const [draft, setDraftText] = useState(() => loadDraft(message.id));
-  const [busy, setBusy] = useState(false);
-  const [coachError, setCoachError] = useState<string | null>(null);
+  // "scoring": the new version is being saved and scored. "coaching": it is saved and scored, the review is running.
+  const [phase, setPhase] = useState<"scoring" | "coaching" | null>(null);
+  // The version that is being scored: it is not part of the message yet, but it already belongs on the timeline.
+  const [pending, setPending] = useState<string | null>(null);
+  const [coachError, setCoachError] = useState<{ text: string; retry: boolean } | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [marking, setMarking] = useState(false);
   const [settingAside, setSettingAside] = useState(false);
   // A draft left behind on an already reviewed message means the user was in the middle of trying again.
   const [redoing, setRedoing] = useState(() => loadDraft(message.id).trim() !== "");
   const [showRewrites, setShowRewrites] = useState(false);
+  const [openSteps, setOpenSteps] = useState<ReadonlySet<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
+  const busy = phase !== null;
   const screen = message.screen;
   const attempts = message.attempts;
   const coaching = message.coaching;
   const latest = attempts[attempts.length - 1];
+  const latestScore = latest?.screen?.naturalness;
 
   const setDraft = (text: string) => {
     setDraftText(text);
@@ -136,33 +148,35 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
   };
   const refresh = async () => onChange(await api.getMessage(message.id));
 
-  // The original, then every try that was scored, so a rewrite can be compared with where it started.
-  const trail = [
-    ...(screen ? [{ label: "Original", value: screen.naturalness }] : []),
-    ...attempts.flatMap((a, i) => (a.screen ? [{ label: `Try ${i + 1}`, value: a.screen.naturalness }] : [])),
-  ];
-  const latestScore = latest?.screen?.naturalness;
-  const delta = screen && latest?.screen ? scoreChange(screen, latest.screen) : null;
-
   /** Reviews the latest saved version. Also what Retry runs, since the version is already saved by then. */
   const coach = async (newVersion?: string) => {
-    setBusy(true);
     setCoachError(null);
     try {
       if (newVersion) {
-        await api.saveAttempt(message.id, newVersion);
+        setPending(newVersion);
+        setPhase("scoring");
+        try {
+          await api.saveAttempt(message.id, newVersion);
+        } catch (e) {
+          // Nothing was saved, so Retry would review an older version: the draft stays in the box to send again.
+          setCoachError({ text: errorText(e), retry: false });
+          return;
+        }
         setDraft("");
-        // Show the saved version at once: if the review below fails it is still there, with a way to retry.
+        // Show the saved and scored version at once: if the review below fails it is still there, with a way to retry.
         await refresh();
+        setPending(null);
       }
+      setPhase("coaching");
       await api.coachMessage(message.id);
       await refresh();
       setShowRewrites(false);
       setRedoing(false);
     } catch (e) {
-      setCoachError(errorText(e));
+      setCoachError({ text: errorText(e), retry: true });
     } finally {
-      setBusy(false);
+      setPending(null);
+      setPhase(null);
     }
   };
 
@@ -205,82 +219,136 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
     }
   };
 
-  return (
-    <motion.article
-      className="card"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: EASE }}
-    >
-      <header className="card-h">
-        <span className="card-meta" title={new Date(message.ts).toLocaleString()}>
-          {message.project ?? "No project"} · sent {ago(message.ts)}
+  // The whole history as one thread: the original is its first step, every sentence appears once.
+  const steps: Step[] = [
+    { key: "original", index: 0, label: "Original", text: message.text, createdAt: null, screen, coaching: null, kind: "original" },
+    ...attempts.map((a, i) => ({
+      key: `try-${a.id}`,
+      index: i + 1,
+      label: `Try ${i + 1}`,
+      text: a.text,
+      createdAt: a.createdAt,
+      screen: a.screen,
+      coaching: a.coaching,
+      kind: "attempt" as const,
+    })),
+    ...(pending !== null
+      ? [{ key: "pending", index: attempts.length + 1, label: `Try ${attempts.length + 1}`, text: pending, createdAt: null, screen: null, coaching: null, kind: "pending" as const }]
+      : []),
+  ];
+  const folded = !showAll && steps.length > FOLD_AT;
+  const shown = folded ? [steps[0], ...steps.slice(-TAIL)] : steps;
+  const hiddenCount = steps.length - shown.length;
+  // What still sounds off is about the newest version, so the header names that one's issue.
+  const currentScreen = latest?.screen ?? screen;
+
+  const toggleStep = (key: string) =>
+    setOpenSteps((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+
+  const renderStep = (step: Step) => {
+    const last = step.index === steps.length - 1;
+    const open = last || openSteps.has(step.key);
+    const before = step.index > 0 ? steps[step.index - 1] : null;
+    const isLatestTry = last && step.kind !== "original";
+
+    const score =
+      step.kind === "pending" ? (
+        <span className="pend" role="status">
+          <i className="ph ph-spinner spin" aria-hidden="true" />
+          Scoring
         </span>
-        {screen ? (
-          <span className="card-scores">
-            <Meter value={screen.naturalness} word />
-            <IssueChip issue={screen.issue} />
+      ) : step.screen ? (
+        <>
+          <Meter value={step.screen.naturalness} word={step.kind === "original" && attempts.length === 0 && pending === null} />
+          {before?.screen && <DeltaChip before={before.screen} after={step.screen} />}
+        </>
+      ) : (
+        <span className="muted">{step.kind === "original" ? "Not screened yet" : "Not scored"}</span>
+      );
+
+    const head = (
+      <>
+        <span className="trail-label">{step.label}</span>
+        {step.createdAt !== null && (
+          <span className="muted tl-when" title={new Date(step.createdAt).toLocaleString()}>
+            {ago(step.createdAt)}
           </span>
-        ) : (
-          <span className="muted">Not screened yet</span>
         )}
-      </header>
+        <span className="tl-score">{score}</span>
+        {!last && <i className={`ph ${open ? "ph-caret-up" : "ph-caret-down"} tl-caret`} aria-hidden="true" />}
+      </>
+    );
 
-      <figure className="orig">
-        <figcaption className="eyebrow">What you wrote</figcaption>
-        <blockquote>{message.text}</blockquote>
-      </figure>
+    return (
+      <motion.li
+        key={step.key}
+        className={`tl-step${last ? " current" : ""}`}
+        layout="position"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, transition: { duration: 0.12 } }}
+        transition={{ duration: 0.38, ease: EASE }}
+      >
+        <i className="tl-dot" aria-hidden="true" />
+        {last ? (
+          <div className="tl-head">{head}</div>
+        ) : (
+          <button type="button" className="tl-head tl-toggle" aria-expanded={open} onClick={() => toggleStep(step.key)}>
+            {head}
+          </button>
+        )}
 
-      <AnimatePresence mode="wait">
-        {(!coaching || redoing) && (
-          <motion.div
-            key="attempt"
-            className="attempt"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8, transition: { duration: 0.16 } }}
-            transition={{ duration: 0.3, ease: EASE }}
-          >
-            <label htmlFor={`draft-${message.id}`}>{attempts.length > 0 ? "Try it again" : "Say it your way"}</label>
-            <textarea
-              id={`draft-${message.id}`}
-              rows={3}
-              value={draft}
-              disabled={busy}
-              placeholder="Write the message the way you would say it"
-              onChange={(e) => setDraft(e.target.value)}
-            />
-            <div className="card-actions">
-              <button type="button" className="btn btn-primary" disabled={busy || !draft.trim()} onClick={() => void coach(draft.trim())}>
-                <i className={busy ? "ph ph-spinner spin" : "ph ph-sparkle"} aria-hidden="true" />
-                {busy ? "Coaching" : "Show suggestions"}
-              </button>
-              {redoing && coaching && (
-                <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setRedoing(false)}>
-                  Cancel
-                </button>
-              )}
-            </div>
+        {open ? (
+          step.kind === "original" ? (
+            <p className="attempt-text">{step.text}</p>
+          ) : (
+            <VersionText before={before?.text ?? null} after={step.text} />
+          )
+        ) : (
+          <p className="attempt-text tl-clamp">{step.text}</p>
+        )}
 
-            {latest && !coaching && !busy && !coachError && (
+        {open && !last && step.coaching && <CoachNotes coaching={step.coaching} />}
+
+        {isLatestTry && (
+          <div className="tl-attach">
+            {step.kind === "attempt" && screen && step.screen && attempts.length > 1 && (() => {
+              const total = scoreChange(screen, step.screen);
+              return total === null ? null : (
+                <span className={`delta ${total > 0 ? "up" : total < 0 ? "down" : "flat"}`}>
+                  {total === 0 ? "No change" : `${total > 0 ? "+" : "−"}${Math.abs(total).toFixed(1)}`} since your original
+                </span>
+              );
+            })()}
+
+            {step.kind === "attempt" && latestScore !== undefined && message.reviewedAt === null && message.excludedAt === null && (
+              <p className="stays-note">
+                <i className="ph ph-arrow-bend-up-left" aria-hidden="true" />
+                This version scored {latestScore.toFixed(1)}, below your goal, so the message stays in your queue.
+              </p>
+            )}
+
+            {step.kind === "attempt" && !coaching && !busy && !coachError && (
               <div className="pending-note" role="status">
                 <i className="ph ph-clock-countdown" aria-hidden="true" />
-                <span>Your last version is saved, but it was not reviewed yet.</span>
+                <span>This version is saved, but it was not reviewed yet.</span>
                 <button type="button" className="btn btn-ghost sm" onClick={() => void coach()}>
                   Review it
                 </button>
               </div>
             )}
 
-            <VersionHistory attempts={attempts} defaultOpen />
-
             <AnimatePresence initial={false}>
-              {busy && (
+              {phase === "coaching" && step.kind === "attempt" && (
                 <motion.div key="wait" className="coach-wait" role="status" {...expand}>
                   <div className="coach-wait-in">
                     <div className="coach-wait-h">
                       <i className="ph-fill ph-sparkle coach-spark" aria-hidden="true" />
-                      <span>Finding what to coach</span>
+                      <span>Scored. The coach is reading your version</span>
                       <span className="dots" aria-hidden="true">
                         <i />
                         <i />
@@ -295,174 +363,227 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
               )}
             </AnimatePresence>
 
-            <AnimatePresence initial={false}>
-              {coachError && (
-                <motion.div key="error" className="inline-error" role="alert" {...expand}>
-                  <i className="ph ph-warning-circle" aria-hidden="true" />
-                  <span>Could not get suggestions: {coachError}</span>
-                  <button type="button" className="btn btn-ghost sm" disabled={busy} onClick={() => void coach()}>
-                    Retry
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+            {step.kind === "attempt" && coaching && !busy && (redoing ? <CoachNotes coaching={coaching} /> : review(coaching))}
+          </div>
         )}
+      </motion.li>
+    );
+  };
 
-        {coaching && !redoing && (
-          <motion.div
-            key="coaching"
-            className="coaching"
-            variants={stagger(0.1, 0.05)}
-            initial="hidden"
-            animate="show"
-            exit={{ opacity: 0, transition: { duration: 0.16 } }}
+  /** The coach's review of the newest version: why, rewrites on request, and the one thing to remember. */
+  const review = (c: Coaching) => (
+    <motion.div className="coaching" variants={stagger(0.1, 0.05)} initial="hidden" animate="show">
+      <motion.section variants={rise} className="why">
+        <div className="sect-h">
+          <h3>What the coach says</h3>
+          <CostChip coaching={c} />
+        </div>
+        <p>{c.explanation}</p>
+        {c.assumption && (
+          <p className="muted">
+            <i className="ph ph-info" aria-hidden="true" /> {c.assumption}
+          </p>
+        )}
+      </motion.section>
+
+      <motion.section variants={rise} className="rw-sec">
+        <div className="sect-h">
+          <h3>Rewrites</h3>
+          <button
+            type="button"
+            className="btn btn-ghost sm"
+            aria-expanded={showRewrites}
+            aria-controls={`rewrites-${message.id}`}
+            onClick={() => setShowRewrites((v) => !v)}
           >
-            <motion.section variants={rise}>
-              <div className="sect-h">
-                <h3>Your version</h3>
-                <button type="button" className="btn btn-ghost sm" onClick={tryAgain}>
-                  <i className="ph ph-arrow-counter-clockwise" aria-hidden="true" />
-                  Try again
-                </button>
-              </div>
-              {latest ? <p className="attempt-text">{latest.text}</p> : <p className="muted">No attempt saved.</p>}
-              {trail.length > 1 && (
-                <div className="progress">
-                  <ScoreTrail steps={trail} />
-                  {delta !== null && (
-                    <span className={`delta ${delta > 0 ? "up" : delta < 0 ? "down" : "flat"}`}>
-                      {delta === 0 ? "No change" : `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}`} since your original
-                    </span>
-                  )}
-                </div>
-              )}
-              {latestScore !== undefined && message.reviewedAt === null && message.excludedAt === null && (
-                <p className="stays-note">
-                  <i className="ph ph-arrow-bend-up-left" aria-hidden="true" />
-                  This version scored {latestScore.toFixed(1)}, below your goal, so the message stays in your queue.
-                </p>
-              )}
-              {attempts.length > 1 && (
-                <div className="ver-wrap">
-                  <VersionHistory attempts={attempts.slice(0, -1)} defaultOpen={false} />
-                </div>
-              )}
-            </motion.section>
+            <motion.span
+              key={showRewrites ? "hide" : "show"}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: EASE }}
+            >
+              <i className={showRewrites ? "ph ph-eye-slash" : "ph ph-eye"} aria-hidden="true" />
+              {showRewrites ? "Hide rewrites" : "Show rewrites"}
+            </motion.span>
+          </button>
+        </div>
+        <AnimatePresence initial={false}>
+          {showRewrites && (
+            <motion.div key="rewrites" id={`rewrites-${message.id}`} className="rw-wrap" {...expand}>
+              <motion.ul className="rewrites" variants={stagger(0.09, 0.08)} initial="hidden" animate="show">
+                {c.rewrites.map((r, i) => (
+                  <motion.li key={i} className="rw" variants={rise}>
+                    <div className="rw-top">
+                      <span className={`reg ${r.register}`}>
+                        <i className={`ph ${REGISTER_ICON[r.register]}`} aria-hidden="true" />
+                        {r.register}
+                      </span>
+                      <span className="rw-act" aria-live="polite">
+                        <AnimatePresence>
+                          {copied === i && (
+                            <motion.span
+                              key="said"
+                              className="rw-copied"
+                              initial={{ opacity: 0, x: 8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 4 }}
+                              transition={{ duration: 0.2, ease: EASE }}
+                            >
+                              Copied
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+                        <button
+                          type="button"
+                          className={`ib sm copy${copied === i ? " done" : ""}`}
+                          aria-label={`Copy ${r.register} rewrite`}
+                          onClick={() => void copy(r.text, i)}
+                        >
+                          <AnimatePresence mode="wait" initial={false}>
+                            {copied === i ? (
+                              <motion.i
+                                key="check"
+                                className="ph ph-check"
+                                aria-hidden="true"
+                                initial={{ scale: 0.3, rotate: -40, opacity: 0 }}
+                                animate={{ scale: [0.3, 1.4, 1], rotate: 0, opacity: 1 }}
+                                exit={{ scale: 0.4, opacity: 0 }}
+                                transition={{ duration: 0.42, ease: EASE }}
+                              />
+                            ) : (
+                              <motion.i
+                                key="copy"
+                                className="ph ph-copy"
+                                aria-hidden="true"
+                                initial={{ scale: 0.5, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.5, opacity: 0 }}
+                                transition={{ duration: 0.15 }}
+                              />
+                            )}
+                          </AnimatePresence>
+                        </button>
+                      </span>
+                    </div>
+                    <p>{r.text}</p>
+                  </motion.li>
+                ))}
+              </motion.ul>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.section>
 
-            <motion.section variants={rise} className="rw-sec">
-              <div className="sect-h">
-                <h3>Rewrites</h3>
-                <button
-                  type="button"
-                  className="btn btn-ghost sm"
-                  aria-expanded={showRewrites}
-                  aria-controls={`rewrites-${message.id}`}
-                  onClick={() => setShowRewrites((v) => !v)}
-                >
-                  <motion.span
-                    key={showRewrites ? "hide" : "show"}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, ease: EASE }}
-                  >
-                    <i className={showRewrites ? "ph ph-eye-slash" : "ph ph-eye"} aria-hidden="true" />
-                    {showRewrites ? "Hide rewrites" : "Show rewrites"}
-                  </motion.span>
-                </button>
-              </div>
-              <AnimatePresence initial={false}>
-                {showRewrites && (
-                  <motion.div key="rewrites" id={`rewrites-${message.id}`} className="rw-wrap" {...expand}>
-                    <motion.ul className="rewrites" variants={stagger(0.09, 0.08)} initial="hidden" animate="show">
-                      {coaching.rewrites.map((r, i) => (
-                        <motion.li key={i} className="rw" variants={rise}>
-                          <div className="rw-top">
-                            <span className={`reg ${r.register}`}>
-                              <i className={`ph ${REGISTER_ICON[r.register]}`} aria-hidden="true" />
-                              {r.register}
-                            </span>
-                            <span className="rw-act" aria-live="polite">
-                              <AnimatePresence>
-                                {copied === i && (
-                                  <motion.span
-                                    key="said"
-                                    className="rw-copied"
-                                    initial={{ opacity: 0, x: 8 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 4 }}
-                                    transition={{ duration: 0.2, ease: EASE }}
-                                  >
-                                    Copied
-                                  </motion.span>
-                                )}
-                              </AnimatePresence>
-                              <button
-                                type="button"
-                                className={`ib sm copy${copied === i ? " done" : ""}`}
-                                aria-label={`Copy ${r.register} rewrite`}
-                                onClick={() => void copy(r.text, i)}
-                              >
-                                <AnimatePresence mode="wait" initial={false}>
-                                  {copied === i ? (
-                                    <motion.i
-                                      key="check"
-                                      className="ph ph-check"
-                                      aria-hidden="true"
-                                      initial={{ scale: 0.3, rotate: -40, opacity: 0 }}
-                                      animate={{ scale: [0.3, 1.4, 1], rotate: 0, opacity: 1 }}
-                                      exit={{ scale: 0.4, opacity: 0 }}
-                                      transition={{ duration: 0.42, ease: EASE }}
-                                    />
-                                  ) : (
-                                    <motion.i
-                                      key="copy"
-                                      className="ph ph-copy"
-                                      aria-hidden="true"
-                                      initial={{ scale: 0.5, opacity: 0 }}
-                                      animate={{ scale: 1, opacity: 1 }}
-                                      exit={{ scale: 0.5, opacity: 0 }}
-                                      transition={{ duration: 0.15 }}
-                                    />
-                                  )}
-                                </AnimatePresence>
-                              </button>
-                            </span>
-                          </div>
-                          <p>{r.text}</p>
-                        </motion.li>
-                      ))}
-                    </motion.ul>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.section>
+      <motion.aside variants={slideIn} className="remember">
+        {/* Wobbles once, just after the callout lands, to say "this is the part to keep". */}
+        <motion.i
+          className="ph-fill ph-lightbulb bulb"
+          aria-hidden="true"
+          animate={{ rotate: [0, -18, 14, -9, 5, 0] }}
+          transition={{ duration: 0.9, delay: 0.85, ease: "easeInOut" }}
+        />
+        <div>
+          <strong>Remember</strong>
+          <p>{c.tip}</p>
+        </div>
+      </motion.aside>
+    </motion.div>
+  );
 
-            <motion.section variants={rise} className="why">
-              <div className="sect-h">
-                <h3>About your version</h3>
-                <CostChip coaching={coaching} />
-              </div>
-              <p>{coaching.explanation}</p>
-            </motion.section>
+  const writing = !busy && (!coaching || redoing);
 
-            <motion.aside variants={slideIn} className="remember">
-              {/* Wobbles once, just after the callout lands, to say "this is the part to keep". */}
-              <motion.i
-                className="ph-fill ph-lightbulb bulb"
-                aria-hidden="true"
-                animate={{ rotate: [0, -18, 14, -9, 5, 0] }}
-                transition={{ duration: 0.9, delay: 0.85, ease: "easeInOut" }}
-              />
-              <div>
-                <strong>Remember</strong>
-                <p>{coaching.tip}</p>
-              </div>
-            </motion.aside>
+  return (
+    <motion.article
+      className="card"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+    >
+      <header className="card-h">
+        <span className="card-meta" title={new Date(message.ts).toLocaleString()}>
+          {message.project ?? "No project"} · sent {ago(message.ts)}
+        </span>
+        {currentScreen && <IssueChip issue={currentScreen.issue} />}
+      </header>
+
+      <ol className="tl" aria-label="Versions of this message">
+        {/* initial={false}: the steps already there do not animate in again, only a new try does. */}
+        <AnimatePresence initial={false}>
+          {shown.flatMap((step, i) => [
+            ...(folded && i === 1
+              ? [
+                  <li key="gap" className="tl-gap">
+                    <i className="tl-dot" aria-hidden="true" />
+                    <button type="button" className="trail-more" onClick={() => setShowAll(true)}>
+                      +{hiddenCount} earlier {hiddenCount === 1 ? "try" : "tries"}
+                    </button>
+                  </li>,
+                ]
+              : []),
+            renderStep(step),
+          ])}
+        </AnimatePresence>
+        {showAll && steps.length > FOLD_AT && (
+          <li className="tl-gap">
+            <i className="tl-dot" aria-hidden="true" />
+            <button type="button" className="trail-more" onClick={() => setShowAll(false)}>
+              Show fewer
+            </button>
+          </li>
+        )}
+      </ol>
+
+      <AnimatePresence initial={false}>
+        {coachError && (
+          <motion.div key="error" className="inline-error" role="alert" {...expand}>
+            <i className="ph ph-warning-circle" aria-hidden="true" />
+            <span>{coachError.retry ? "Could not get suggestions" : "Could not save this version"}: {coachError.text}</span>
+            {coachError.retry && (
+              <button type="button" className="btn btn-ghost sm" disabled={busy} onClick={() => void coach()}>
+                Retry
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
+
+      {writing && (
+        <motion.div
+          key="attempt"
+          className="attempt"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: EASE }}
+        >
+          <label htmlFor={`draft-${message.id}`}>{attempts.length > 0 ? "Try it again" : "Say it your way"}</label>
+          <textarea
+            id={`draft-${message.id}`}
+            rows={3}
+            value={draft}
+            placeholder="Write the message the way you would say it"
+            onChange={(e) => setDraft(e.target.value)}
+          />
+          <div className="card-actions">
+            <button type="button" className="btn btn-primary" disabled={!draft.trim()} onClick={() => void coach(draft.trim())}>
+              <i className="ph ph-sparkle" aria-hidden="true" />
+              Show suggestions
+            </button>
+            {redoing && coaching && (
+              <button type="button" className="btn btn-ghost" onClick={() => setRedoing(false)}>
+                Cancel
+              </button>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {coaching && !redoing && !busy && (
+        <button type="button" className="btn btn-ghost sm tl-again" onClick={tryAgain}>
+          <i className="ph ph-arrow-counter-clockwise" aria-hidden="true" />
+          Try again
+        </button>
+      )}
 
       <footer className="card-f">
         {message.excludedAt !== null ? (

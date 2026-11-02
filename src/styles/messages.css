@@ -132,31 +132,48 @@
 
 .card-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
 .card-meta { color: var(--muted); font-size: 12.5px; }
-.card-scores { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 
-/* What you wrote: the rule on the left draws itself in. */
-.orig { position: relative; margin: 0; padding: 2px 0 2px 16px; }
-.orig::before {
-  content: "";
+/* ───────── timeline: the original, then every try, each sentence once ───────── */
+.tl { position: relative; display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.tl::before { content: ""; position: absolute; left: 6px; top: 10px; bottom: 14px; width: 2px; background: var(--line); }
+.tl-step, .tl-gap { position: relative; min-width: 0; padding: 0 0 16px 26px; }
+.tl-step:last-child { padding-bottom: 0; }
+.tl-dot {
   position: absolute;
   left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--line-strong);
-  transform-origin: 50% 0;
-  animation: orig-draw 0.7s var(--ease) both;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface);
 }
-@keyframes orig-draw { from { transform: scaleY(0); } }
-.orig figcaption { margin-bottom: 4px; }
-.orig blockquote {
-  margin: 0;
-  color: var(--ink);
-  font: 400 17px/1.5 var(--serif);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
+.tl-step.current .tl-dot { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.tl-gap .tl-dot { top: 7px; width: 10px; height: 10px; margin-left: 2px; border-style: dotted; }
+.tl-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; width: 100%; min-height: 22px; margin-bottom: 4px; }
+.tl-toggle { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.tl-toggle:hover .trail-label { color: var(--ink); }
+.tl-toggle:focus-visible { outline: 0; border-radius: 6px; box-shadow: var(--ring); }
+.tl-when { font-size: 12px; }
+.tl-score { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-left: auto; }
+.tl-caret { color: var(--muted); font-size: 13px; }
+.tl-clamp { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; color: var(--ink-2); font-size: 15px; }
+.tl-step.current > .attempt-text { font-size: 18px; }
+.tl-changes { margin: 4px 0 0 -6px; }
+.tl-again { align-self: flex-start; margin-top: -6px; }
+.tl-attach { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.tl-attach > .stays-note { margin: 0; }
+
+/* What changed from the step before: added words marked, removed ones struck. Underline and strike-through carry it, not just colour. */
+.attempt-text ins { padding: 0 2px; border-radius: 3px; background: var(--good-soft); color: var(--good); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.attempt-text del { padding: 0 2px; border-radius: 3px; background: var(--diff-del); color: var(--bad); text-decoration: line-through; }
+
+/* The score that just landed: a spinner while Jev works, then the change from the step before. */
+.pend { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: 600 13px var(--sans); }
+.dchip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 9px 1px 7px; border-radius: 999px; background: var(--sunken); color: var(--muted); font: 700 12px var(--sans); font-variant-numeric: tabular-nums; }
+.dchip i { font-size: 11px; }
+.dchip.up { background: var(--good-soft); color: var(--good); }
+.dchip.down { background: var(--bad-soft); color: var(--bad); }
 
 .card .eyebrow, .card h3 { font-size: 11.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
 .card h3 { margin: 0 0 6px; }
@@ -198,12 +215,6 @@
 .sect-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 8px; }
 .sect-h h3 { margin: 0; }
 .attempt-text { margin: 0; color: var(--ink); font: 400 17px/1.5 var(--serif); white-space: pre-wrap; overflow-wrap: anywhere; }
-.progress { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 10px; }
-.trail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; margin: 0; padding: 0; list-style: none; }
-.trail li { display: inline-flex; align-items: center; gap: 8px; }
-.trail li + li::before { content: "→"; margin: 0 6px 0 4px; color: var(--muted); }
-.trail li.trail-end::before { content: none; margin: 0; }
-.trail-step.latest { padding: 3px 10px 3px 8px; margin: -3px 0; border-radius: 999px; background: var(--accent-soft); }
 .trail-more {
   padding: 2px 10px;
   border: 1px dashed var(--line-strong);
@@ -217,7 +228,6 @@
 }
 .trail-more:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .trail-more:focus-visible { outline: 0; box-shadow: var(--ring); }
-.ver-more { margin-top: 10px; }
 .trail-label { color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 .delta { font: 600 13px var(--sans); font-variant-numeric: tabular-nums; color: var(--muted); }
 .delta.up { color: var(--good); }
@@ -331,28 +341,18 @@
   font-size: 13px;
 }
 .stays-note i { color: var(--accent); font-size: 16px; }
-.ver-wrap { margin-top: 12px; }
-.versions { border-top: 1px solid var(--line); padding-top: 10px; }
-.versions > summary, .ver-coach > summary {
+.ver-coach > summary {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
   color: var(--muted);
-  font: 600 11.5px var(--sans);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font: 600 12.5px var(--sans);
   list-style: none;
 }
-.versions > summary::-webkit-details-marker, .ver-coach > summary::-webkit-details-marker { display: none; }
-.versions > summary:hover, .ver-coach > summary:hover { color: var(--ink); }
-.count-pill { padding: 0 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-.ver-list { display: flex; flex-direction: column; gap: 14px; margin: 12px 0 2px; padding: 0; list-style: none; }
-.ver { display: flex; flex-direction: column; gap: 6px; padding-left: 14px; border-left: 2px solid var(--line); }
-.ver-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12px; }
-.ver .attempt-text { font-size: 16px; }
-.ver-coach { font-size: 13.5px; color: var(--ink-2); }
-.ver-coach > summary { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 12.5px; }
+.ver-coach > summary::-webkit-details-marker { display: none; }
+.ver-coach > summary:hover { color: var(--ink); }
+.ver-coach { margin-top: 8px; font-size: 13.5px; color: var(--ink-2); }
 .ver-coach p { margin: 6px 0 0; line-height: 1.55; }
 .ver-coach ul { margin: 6px 0 0; padding-left: 18px; }
 .ver-coach li { margin: 3px 0; }
