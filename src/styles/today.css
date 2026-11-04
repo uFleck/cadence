@@ -65,6 +65,8 @@
 .t-spark .area { fill: var(--accent-soft); opacity: 0.55; }
 .t-spark .dt { fill: var(--surface); stroke: var(--accent); stroke-width: 2; transform-box: fill-box; transform-origin: center; }
 .t-spark .dt.last { fill: var(--accent); }
+.t-spark .dt { transition: r var(--med) var(--spring), fill var(--fast) var(--ease); }
+.t-spark .dt.on { r: 5.5px; fill: var(--accent); }
 
 .t-counts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 13px; }
 .t-counts b { margin-right: 2px; color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; }

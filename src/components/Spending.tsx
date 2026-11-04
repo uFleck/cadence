@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { api, USAGE_KIND_LABEL, type Spending, type UsageCall, type UsageTotals } from "../api";
 import { rise, stagger } from "../motion";
+import { ChartTip } from "./ChartTip";
 import { ago, errorText, usd, type Notify } from "./shared";
 import "../styles/spending.css";
 
@@ -48,6 +49,7 @@ function Tile({ label, t }: { label: string; t: UsageTotals }) {
 }
 
 function DayChart({ days }: { days: Spending["days"] }) {
+  const [hover, setHover] = useState<number | null>(null);
   const peak = Math.max(0, ...days.map((d) => d.costUsd));
   const total = days.reduce((n, d) => n + d.costUsd, 0);
   // With no spend at all the scale still needs a height, so it runs to 1 dollar.
@@ -58,9 +60,12 @@ function DayChart({ days }: { days: Spending["days"] }) {
   const y = (v: number) => PAD.t + (1 - v / scale) * plotH;
   const first = days[0];
   const lastDay = days[days.length - 1];
+  const active = hover !== null && hover < days.length ? hover : null;
+  const tipDay = active === null ? null : days[active];
 
   return (
     <>
+      <div className="chart-wrap" onPointerLeave={() => setHover(null)}>
       <svg
         className="sp-chart"
         viewBox={`0 0 ${W} ${H}`}
@@ -79,21 +84,33 @@ function DayChart({ days }: { days: Spending["days"] }) {
           const x = PAD.l + i * slot + (slot - barW) / 2;
           // A zero day draws a 1px tick on the baseline so it still reads as a day.
           const yTop = d.costUsd > 0 ? y(d.costUsd) : y(0) - 1;
-          const label = `${shortDay(d.day)}: ${usd(d.costUsd)}, ${plural(d.claudeCalls, "Claude call")}, ${plural(d.jevCalls, "screen")}`;
           return (
             <rect
               key={d.day}
-              className={`sp-bar${d.costUsd > 0 ? "" : " zero"}`}
+              className={`sp-bar${d.costUsd > 0 ? "" : " zero"}${active === i ? " on" : ""}`}
               x={x}
               y={yTop}
               width={barW}
               height={y(0) - yTop}
               rx={2}
-              data-tip={label}
-              aria-label={label}
             />
           );
         })}
+        {days.map((d, i) => (
+          <rect
+            key={d.day}
+            className="chart-hit"
+            x={PAD.l + i * slot}
+            y={PAD.t}
+            width={slot}
+            height={plotH}
+            tabIndex={0}
+            aria-label={`${shortDay(d.day)}: ${usd(d.costUsd)}, ${plural(d.claudeCalls, "Claude call")}, ${plural(d.jevCalls, "screen")}`}
+            onPointerEnter={() => setHover(i)}
+            onFocus={() => setHover(i)}
+            onBlur={() => setHover(null)}
+          />
+        ))}
         {first && (
           <text className="sp-axis" x={PAD.l} y={H - 6}>
             {shortDay(first.day)}
@@ -105,6 +122,20 @@ function DayChart({ days }: { days: Spending["days"] }) {
           </text>
         )}
       </svg>
+      <ChartTip
+        at={tipDay === null || active === null ? null : { left: ((PAD.l + active * slot + slot / 2) / W) * 100, top: (y(tipDay.costUsd) / H) * 100 }}
+      >
+        {tipDay && (
+          <>
+            <span className="tip-day">{shortDay(tipDay.day)}</span>
+            <span className="tip-num">{usd(tipDay.costUsd)}</span>
+            <span className="tip-meta">
+              {plural(tipDay.claudeCalls, "Claude call")} · {plural(tipDay.jevCalls, "screen")}
+            </span>
+          </>
+        )}
+      </ChartTip>
+      </div>
       <p className="sp-note">
         Hover a bar for its day. Highest day {usd(peak)}; {usd(total)} over the last {days.length} days.
       </p>

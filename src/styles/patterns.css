@@ -40,7 +40,6 @@
 .bar-avg { color: var(--muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ───────── trend chart ───────── */
-.chart-wrap { position: relative; }
 .chart { display: block; width: 100%; height: auto; overflow: visible; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }
 .chart .axis { fill: var(--muted); font: 11px var(--sans); font-variant-numeric: tabular-nums; }
@@ -60,27 +59,6 @@
 .chart .dot.on { r: 5.5px; fill: var(--accent); }
 .chart .cursor { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
 .chart .hit { fill: transparent; pointer-events: all; outline: 0; cursor: crosshair; }
-
-.chart-tip-pos {
-  position: absolute;
-  z-index: 2;
-  margin-top: -12px;
-  pointer-events: none;
-  transition: left var(--fast) var(--ease), top var(--fast) var(--ease);
-}
-.chart-tip {
-  display: grid;
-  gap: 1px;
-  padding: 8px 12px 9px;
-  border-radius: var(--r);
-  background: var(--ink);
-  color: var(--paper);
-  box-shadow: var(--shadow-md);
-  white-space: nowrap;
-}
-.tip-day { font-size: 11px; letter-spacing: 0.04em; opacity: 0.72; }
-.tip-num { font: 500 22px/1.1 var(--serif); font-variant-numeric: tabular-nums; }
-.tip-meta { font-size: 11px; opacity: 0.72; font-variant-numeric: tabular-nums; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0 0; color: var(--ink-2); font-size: 12px; }
 .legend span { display: inline-flex; align-items: center; gap: 8px; }

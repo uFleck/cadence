@@ -35,7 +35,9 @@
 .sp-chart .sp-base { stroke: var(--muted); stroke-width: 1; }
 .sp-chart .sp-axis { fill: var(--muted); font: 11px var(--sans); font-variant-numeric: tabular-nums; }
 .sp-chart .sp-bar { fill: var(--accent); }
+.sp-chart .sp-bar { transition: opacity var(--fast) var(--ease); }
 .sp-chart .sp-bar.zero { fill: var(--muted); }
+.sp-chart:has(.sp-bar.on) .sp-bar:not(.on) { opacity: 0.45; }
 
 /* ───────── by kind ───────── */
 .sp-kinds { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }

@@ -43,6 +43,9 @@
 .pg-line { fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
 .pg-dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
 .pg-dot-last { fill: var(--accent); stroke: var(--surface); }
+.pg-dot { transition: r var(--med) var(--spring), fill var(--fast) var(--ease); }
+.pg-dot.on { r: 5.5px; fill: var(--accent); }
+.pg-dot-last.on { r: 6.5px; }
 .pg-val { font-size: 11.5px; font-weight: 600; fill: var(--accent); }
 .pg-last-val { font-size: 13px; font-weight: 600; fill: var(--accent); }
 .pg-last-lbl { font-size: 11px; fill: var(--muted); }

@@ -1,0 +1,26 @@
+/* Hover read-out and hit areas shared by every chart (see ChartTip.tsx). */
+.chart-wrap { position: relative; }
+
+.chart-cursor { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+.chart-hit { fill: transparent; pointer-events: all; outline: 0; cursor: crosshair; }
+
+.chart-tip-pos {
+  position: absolute;
+  z-index: 2;
+  margin-top: -12px;
+  pointer-events: none;
+  transition: left var(--fast) var(--ease), top var(--fast) var(--ease);
+}
+.chart-tip {
+  display: grid;
+  gap: 1px;
+  padding: 8px 12px 9px;
+  border-radius: var(--r);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+}
+.tip-day { font-size: 11px; letter-spacing: 0.04em; opacity: 0.72; }
+.tip-num { font: 500 22px/1.1 var(--serif); font-variant-numeric: tabular-nums; }
+.tip-meta { font-size: 11px; opacity: 0.72; font-variant-numeric: tabular-nums; }

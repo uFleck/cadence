@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { api, type Message, type Overview, type Patterns, type TrendRow } from "../api";
 import { CountUp, EASE, SOFT_SPRING, rise, stagger } from "../motion";
 import { IssueChip, Meter, ago, currentScore, errorText, type Notify } from "./shared";
+import { ChartTip } from "./ChartTip";
 import { MessageCard } from "./MessageCard";
 import "../styles/today.css";
 
@@ -69,6 +70,7 @@ function summarize(trend: TrendRow[], now: number) {
 
 function Spark({ rows, threshold }: { rows: TrendRow[]; threshold: number }) {
   const reduce = useReducedMotion();
+  const [hover, setHover] = useState<number | null>(null);
   const W = 400;
   const H = 96;
   const PX = 12;
@@ -86,8 +88,11 @@ function Spark({ rows, threshold }: { rows: TrendRow[]; threshold: number }) {
   const short = (s: string) => parseDay(s).toLocaleDateString("en", { month: "short", day: "numeric" });
   const draw = 0.9;
   const base = 0.35;
+  const active = hover !== null && hover < rows.length ? hover : null;
+  const slot = rows.length > 1 ? (W - 2 * PX) / (rows.length - 1) : W - 2 * PX;
 
   return (
+    <div className="chart-wrap" onPointerLeave={() => setHover(null)}>
     <svg
       className="t-spark"
       viewBox={`0 0 ${W} ${H}`}
@@ -115,15 +120,13 @@ function Spark({ rows, threshold }: { rows: TrendRow[]; threshold: number }) {
       {pts.map(([px, py], i) => (
         <motion.circle
           key={rows[i].day}
-          className={i === pts.length - 1 ? "dt last" : "dt"}
+          className={`${i === pts.length - 1 ? "dt last" : "dt"}${active === i ? " on" : ""}`}
           cx={px}
           cy={py}
           r={i === pts.length - 1 ? 5 : 3.5}
           initial={reduce ? false : { scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 420, damping: 18, delay: base + (rows.length > 1 ? (draw * i) / (rows.length - 1) : 0.2) }}
-          data-tip={`${short(rows[i].day)}: ${rows[i].avgNaturalness.toFixed(1)} of 3`}
-          aria-label={`${short(rows[i].day)}: ${rows[i].avgNaturalness.toFixed(1)} of 3`}
         />
       ))}
       <text x={pts[0][0]} y={H - 4} textAnchor={rows.length === 1 ? "middle" : "start"}>
@@ -134,7 +137,34 @@ function Spark({ rows, threshold }: { rows: TrendRow[]; threshold: number }) {
           {short(rows[rows.length - 1].day)}
         </text>
       )}
+      {rows.map((r, i) => (
+        <rect
+          key={r.day}
+          className="chart-hit"
+          x={rows.length > 1 ? pts[i][0] - slot / 2 : PX}
+          y={0}
+          width={slot}
+          height={BOT + 6}
+          tabIndex={0}
+          aria-label={`${short(r.day)}: ${r.avgNaturalness.toFixed(1)} of 3`}
+          onPointerEnter={() => setHover(i)}
+          onFocus={() => setHover(i)}
+          onBlur={() => setHover(null)}
+        />
+      ))}
     </svg>
+    <ChartTip at={active === null ? null : { left: (pts[active][0] / W) * 100, top: (pts[active][1] / H) * 100 }}>
+      {active !== null && (
+        <>
+          <span className="tip-day">{short(rows[active].day)}</span>
+          <span className="tip-num">{rows[active].avgNaturalness.toFixed(2)}</span>
+          <span className="tip-meta">
+            {rows[active].count} {rows[active].count === 1 ? "message" : "messages"}
+          </span>
+        </>
+      )}
+    </ChartTip>
+    </div>
   );
 }
 

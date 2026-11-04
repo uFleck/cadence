@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ISSUE_LABEL, type Progress as ProgressData, type ProgressWeek } from "../api";
+import { ChartTip } from "./ChartTip";
 import { Practice } from "./Practice";
 import { errorText, SAME_SCORE, type Notify } from "./shared";
 import "../styles/progress.css";
@@ -27,6 +28,7 @@ const monthDay = (iso: string) => parseDay(iso).toLocaleDateString(undefined, { 
 const fmt = (n: number) => n.toFixed(1);
 
 function Chart({ weeks, goal }: { weeks: ProgressWeek[]; goal: number }) {
+  const [hover, setHover] = useState<number | null>(null);
   const values = weeks.flatMap((w) => (w.afterRetries === null ? [w.firstDraft] : [w.firstDraft, w.afterRetries]));
   const yMin = Math.max(0, Math.floor(Math.min(...values) * 2) / 2 - 0.5);
   const y = (v: number) => Y_BOT - ((v - yMin) / (MAX - yMin)) * (Y_BOT - Y_TOP);
@@ -79,7 +81,14 @@ function Chart({ weeks, goal }: { weeks: ProgressWeek[]; goal: number }) {
   const goalY = y(goal);
   const lastX = x(weeks.length - 1);
 
+  // Each week owns the strip between the midpoints to its neighbours, so hovering anywhere near a point picks it.
+  const edge = (i: number) => (i < 0 ? X0 : i >= weeks.length ? X1 : (x(i - 1) + x(i)) / 2);
+  const active = hover !== null && hover < weeks.length ? hover : null;
+  const tipWeek = active === null ? null : weeks[active];
+
   return (
+    <div className="chart-wrap" onPointerLeave={() => setHover(null)}>
+    <div className="pg-scroll">
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} className="pg-svg">
       {ticks.map((t) => (
         <g key={t}>
@@ -100,6 +109,7 @@ function Chart({ weeks, goal }: { weeks: ProgressWeek[]; goal: number }) {
       {lines.map((r, i) => (
         <polyline key={i} className="pg-retry-line" points={r.map((p) => `${p.x},${p.y}`).join(" ")} />
       ))}
+      {active !== null && <line className="chart-cursor" x1={x(active)} x2={x(active)} y1={Y_TOP} y2={Y_BOT} />}
       {weeks.map(
         (w, i) =>
           w.afterRetries !== null && <circle key={i} className="pg-retry-dot" cx={x(i)} cy={y(w.afterRetries)} r={2.6} />,
@@ -112,7 +122,7 @@ function Chart({ weeks, goal }: { weeks: ProgressWeek[]; goal: number }) {
         const below = cy < Y_BOT - 18;
         return (
           <g key={i}>
-            <circle className={isLast ? "pg-dot pg-dot-last" : "pg-dot"} cx={x(i)} cy={cy} r={isLast ? 5.5 : 4} />
+            <circle className={`${isLast ? "pg-dot pg-dot-last" : "pg-dot"}${active === i ? " on" : ""}`} cx={x(i)} cy={cy} r={isLast ? 5.5 : 4} />
             {showValues && !isLast && (
               <text className="pg-val" x={x(i)} y={below ? cy + 20 : cy - 11} textAnchor="middle">
                 {fmt(w.firstDraft)}
@@ -136,7 +146,36 @@ function Chart({ weeks, goal }: { weeks: ProgressWeek[]; goal: number }) {
             </text>
           ),
       )}
+      {weeks.map((w, i) => (
+        <rect
+          key={w.week}
+          className="chart-hit"
+          x={weeks.length === 1 ? X0 : edge(i - 1)}
+          y={Y_TOP}
+          width={weeks.length === 1 ? X1 - X0 : edge(i) - edge(i - 1)}
+          height={Y_BOT - Y_TOP}
+          tabIndex={0}
+          aria-label={`Week of ${monthDay(w.week)}: first draft ${fmt(w.firstDraft)}${w.afterRetries === null ? "" : `, after retries ${fmt(w.afterRetries)}`}, ${w.screened} messages`}
+          onPointerEnter={() => setHover(i)}
+          onFocus={() => setHover(i)}
+          onBlur={() => setHover(null)}
+        />
+      ))}
     </svg>
+    </div>
+    <ChartTip at={tipWeek === null || active === null ? null : { left: (x(active) / W) * 100, top: (y(tipWeek.firstDraft) / H) * 100 }}>
+      {tipWeek && (
+        <>
+          <span className="tip-day">Week of {monthDay(tipWeek.week)}</span>
+          <span className="tip-num">{tipWeek.firstDraft.toFixed(2)}</span>
+          <span className="tip-meta">
+            {tipWeek.screened} {tipWeek.screened === 1 ? "message" : "messages"}
+            {tipWeek.afterRetries !== null && ` · after retries ${tipWeek.afterRetries.toFixed(2)}`}
+          </span>
+        </>
+      )}
+    </ChartTip>
+    </div>
   );
 }
 
@@ -279,9 +318,7 @@ export function Progress({ version, notify }: { version: number; notify: Notify 
                     Goal
                   </span>
                 </div>
-                <div className="pg-scroll">
-                  <Chart weeks={weeks} goal={goal} />
-                </div>
+                <Chart weeks={weeks} goal={goal} />
                 <table className="pg-sr">
                   <caption>Weekly average score</caption>
                   <thead>

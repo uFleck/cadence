@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { motion, useInView, AnimatePresence, type Variants } from "motion/react";
+import { motion, useInView, type Variants } from "motion/react";
 import { api, ISSUE_LABEL, type Patterns } from "../api";
 import { CountUp, EASE, rise, stagger } from "../motion";
 import { errorText, type Notify } from "./shared";
+import { ChartTip } from "./ChartTip";
 import "../styles/patterns.css";
 
 const W = 640;
@@ -291,35 +292,18 @@ export function PatternsView({ version, notify }: { version: number; notify: Not
                   />
                 ))}
               </motion.svg>
-              <AnimatePresence>
+              <ChartTip at={active === null ? null : { left: tipLeft, top: (y(trend[active].avgNaturalness) / H) * 100 }}>
                 {active !== null && (
-                  <div
-                    key="tip"
-                    className="chart-tip-pos"
-                    aria-hidden="true"
-                    style={{
-                      left: `${tipLeft}%`,
-                      top: `${(y(trend[active].avgNaturalness) / H) * 100}%`,
-                      transform: `translate(${tipLeft < 14 ? "-14%" : tipLeft > 86 ? "-86%" : "-50%"}, -100%)`,
-                    }}
-                  >
-                    <motion.div
-                      className="chart-tip"
-                      initial={{ opacity: 0, y: 6, scale: 0.94 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                      transition={{ duration: 0.16, ease: EASE }}
-                    >
-                      <span className="tip-day">{trend[active].day}</span>
-                      <span className="tip-num">{trend[active].avgNaturalness.toFixed(2)}</span>
-                      <span className="tip-meta">
-                        {trend[active].count} {trend[active].count === 1 ? "message" : "messages"} · 7-day{" "}
-                        {rolling[active].toFixed(2)}
-                      </span>
-                    </motion.div>
-                  </div>
+                  <>
+                    <span className="tip-day">{trend[active].day}</span>
+                    <span className="tip-num">{trend[active].avgNaturalness.toFixed(2)}</span>
+                    <span className="tip-meta">
+                      {trend[active].count} {trend[active].count === 1 ? "message" : "messages"} · 7-day{" "}
+                      {rolling[active].toFixed(2)}
+                    </span>
+                  </>
                 )}
-              </AnimatePresence>
+              </ChartTip>
             </div>
             <p className="legend">
               <span><i className="key key-daily" /> Daily average (solid)</span>
