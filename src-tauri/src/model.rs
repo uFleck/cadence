@@ -170,7 +170,12 @@ pub const SLIP_SCORE: f64 = 1.9;
 /// The version of the questions Jev is asked (`jev::questions`). Bump it whenever they change: scores
 /// made under different questions are not compared, and the original of a rewritten message is screened
 /// again so it can be compared with the new version.
-pub const RUBRIC: i64 = 2;
+pub const RUBRIC: i64 = 3;
+
+/// Every message screened under a rubric below this one is screened again on the next run, not only the
+/// originals of rewritten messages. Raise it (to `RUBRIC`) only when the old scores must go, since each
+/// message costs one Jev call; a plain `RUBRIC` bump keeps the cheap behaviour.
+pub const FULL_RESCREEN_FROM: i64 = 3;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]

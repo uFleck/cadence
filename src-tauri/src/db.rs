@@ -1,7 +1,7 @@
 use crate::interview;
 use crate::model::{
     InterviewAnswer, InterviewFeedback, InterviewQuestion, InterviewTopic, Attempt, CoachedImpact, Coaching, Issue, IssueWeekRow, WeekRow, Message, MessageFilter, MessageQuery, Overview, PatternRow, Patterns,
-    NewMessage, RunInfo, Rewrite, Screen, Settings, TrendRow, MIN_ENGLISH, MIN_PROSE, RUBRIC,
+    NewMessage, RunInfo, Rewrite, Screen, Settings, TrendRow, FULL_RESCREEN_FROM, MIN_ENGLISH, MIN_PROSE, RUBRIC,
     DayCost, KindCost, Spending, Usage, UsageCall, UsageKind, UsageTotals,
 };
 use crate::redact::{self, redact};
@@ -351,10 +351,10 @@ impl Db {
                AND NOT EXISTS (
                    SELECT 1 FROM screens s WHERE s.message_id = m.id AND s.prose IS NOT NULL
                      -- A rewritten message's original is compared with its new versions, so it follows the rubric.
-                     AND (s.rubric >= ?3 OR NOT EXISTS (SELECT 1 FROM attempts a WHERE a.message_id = m.id)))
+                     AND (s.rubric >= ?3 OR (s.rubric >= ?4 AND NOT EXISTS (SELECT 1 FROM attempts a WHERE a.message_id = m.id))))
              ORDER BY m.ts DESC LIMIT ?2",
         )?;
-        let rows = stmt.query_map(params![min_words, limit, RUBRIC], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        let rows = stmt.query_map(params![min_words, limit, RUBRIC, FULL_RESCREEN_FROM], |r| Ok((r.get(0)?, r.get(1)?)))?;
         rows.collect()
     }
 
@@ -1145,19 +1145,27 @@ mod tests {
     }
 
     #[test]
-    fn only_a_rewritten_message_is_screened_again_when_the_rubric_changes() {
+    fn a_rewritten_message_is_screened_again_when_the_rubric_changes() {
         let db = open("rubric");
-        db.insert_messages(&["rewritten", "untouched"].map(message)).unwrap();
+        db.insert_messages(&["rewritten"].map(message)).unwrap();
         let old = Screen { rubric: RUBRIC - 1, native: None, ..screen(0.95, 0.9, 1.2) };
         db.save_screen("rewritten", &old, "t", 1).unwrap();
-        db.save_screen("untouched", &old, "t", 1).unwrap();
-        assert!(db.unscreened(1, 10).unwrap().is_empty());
         db.save_attempt("rewritten", "a new version", 2).unwrap();
         let pending: Vec<String> = db.unscreened(1, 10).unwrap().into_iter().map(|(id, _)| id).collect();
         assert_eq!(pending, ["rewritten"]);
         db.save_screen("rewritten", &screen(0.95, 0.9, 1.4), "t", 3).unwrap();
         assert!(db.unscreened(1, 10).unwrap().is_empty());
         assert_eq!(db.get_message("rewritten").unwrap().unwrap().screen.map(|s| s.rubric), Some(RUBRIC));
+    }
+
+    #[test]
+    fn a_screen_below_the_full_rescreen_rubric_is_screened_again_even_when_untouched() {
+        let db = open("full-rescreen");
+        db.insert_messages(&["untouched"].map(message)).unwrap();
+        let old = Screen { rubric: FULL_RESCREEN_FROM - 1, native: None, ..screen(0.95, 0.9, 1.2) };
+        db.save_screen("untouched", &old, "t", 1).unwrap();
+        let pending: Vec<String> = db.unscreened(1, 10).unwrap().into_iter().map(|(id, _)| id).collect();
+        assert_eq!(pending, ["untouched"]);
     }
 
     fn review(tip: &str, cost: Option<f64>) -> Coaching {
