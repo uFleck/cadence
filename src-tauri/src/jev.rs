@@ -191,7 +191,9 @@ fn questions() -> Value {
         "issue": {
             "type": "choice",
             "instructions": "The main thing that makes the `state` sound non-native, in a message a software engineer typed to a coding agent. Pick none if it sounds native. Punctuation at the end, capitalisation and quoted tool names are not issues. \
-                Pick the single most noticeable problem. Misspellings, typos and missing apostrophes (dont, theres, its for it's) are only `typo`, never grammar.",
+                Name the concrete slip: if the `state` has a typo, a wrong or missing article, a verb or tense error, a missing word, a wrong preposition, an odd word order, a Portuguese structure or the wrong tone, pick that one, even when the wording is also a bit awkward. \
+                When it has several, pick the one a native speaker would fix first. `awkward_phrasing` is the last resort, only when none of the other options names what is wrong. \
+                Misspellings, typos and missing apostrophes (dont, theres, heres, Im, wasnt, its for it's) are `typo`.",
             "criteria": {
                 "none": "Sounds native",
                 "typo": "A misspelled word, a typo or a missing apostrophe, with the wording otherwise fine",
@@ -199,7 +201,7 @@ fn questions() -> Value {
                 "agreement_tense": "A verb that does not agree with its subject, a wrong or inconsistent verb tense or form, or a wrong plural or countable/uncountable noun",
                 "missing_word": "A word left out of the sentence (a subject, verb, object or particle) so that it reads as incomplete, apart from a dropped article",
                 "preposition": "A wrong, missing or extra preposition (in/on/at/to/for/of/with) or phrasal-verb particle",
-                "awkward_phrasing": "Wording that reads as awkward or non-native without one clear slip to name: a word that is correct but not the one a native speaker would use, a verb, noun or adjective paired with a word a native speaker would not use with it, or a redundant word",
+                "awkward_phrasing": "Only when no other option fits: wording that reads as non-native without one of the slips above, such as a word that is correct but not the one a native speaker would use, a verb, noun or adjective paired with a word a native speaker would not use with it, or a redundant word",
                 "word_order": "Unusual order of words or clauses, including a question word order kept inside a statement",
                 "pt_calque": "A Portuguese expression or structure translated word for word",
                 "register": "Too formal, too stiff or too blunt for a work chat"

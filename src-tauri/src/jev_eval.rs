@@ -235,6 +235,16 @@ async fn thresholds_hold_on_the_labelled_cases() {
         );
     }
 
+    // `awkward_phrasing` is the catch-all; if Jev picks it for most labelled cases, the categories say little.
+    let labelled: Vec<_> = eligible.iter().filter_map(|(c, s)| c.issue.as_deref().map(|want| (want, s.issue.key()))).collect();
+    let agree = labelled.iter().filter(|(want, got)| want == got).count();
+    let awkward = labelled.iter().filter(|(_, got)| *got == "awkward_phrasing").count();
+    println!(
+        "\nissue labels: {agree}/{} match the expected one; awkward_phrasing picked for {awkward} ({} expected)",
+        labelled.len(),
+        labelled.iter().filter(|(want, _)| *want == "awkward_phrasing").count()
+    );
+
     let mut grid = Vec::new();
     for english in [0.5, 0.7, 0.9] {
         for prose in [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] {
