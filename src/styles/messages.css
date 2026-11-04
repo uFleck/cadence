@@ -357,3 +357,13 @@
 .ver-coach ul { margin: 6px 0 0; padding-left: 18px; }
 .ver-coach li { margin: 3px 0; }
 .row-tries { font: 600 12px var(--sans); font-variant-numeric: tabular-nums; color: var(--muted); }
+
+/* Blind retry: earlier reviews are locked while the next try is written. */
+.review-hidden { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.review-hidden i { font-size: 14px; }
+.try-count { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.try-of { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.try-dots { display: inline-flex; gap: 4px; }
+.try-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.try-dots i.on { background: var(--accent); }
+.last-try { font-size: 13px; }

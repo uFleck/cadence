@@ -7,14 +7,16 @@ mod jev;
 mod jev_eval;
 mod model;
 mod pipeline;
+mod progress;
 mod redact;
+mod retest;
 mod schedule;
 
 use chrono::Local;
 use db::Db;
 use model::{
-    Attempt, Coaching, InterviewAnswer, InterviewQuestion, InterviewTopic, Message, MessageQuery, Overview, Patterns, Screen, Settings,
-    Spending, UsageKind,
+    Attempt, Coaching, InterviewAnswer, InterviewQuestion, InterviewTopic, Message, MessageQuery, Overview, Patterns, Progress, Retest,
+    RetestQueue, Screen, Settings, Spending, UsageKind, MAX_TRIES,
 };
 use pipeline::{now_ms, Core};
 use std::path::PathBuf;
@@ -88,6 +90,8 @@ async fn coach_message(core: Shared<'_>, id: String) -> Result<Coaching, String>
     coaching.cost_usd = usage.cost_usd;
     core.db.save_coaching(&id, &coaching).map_err(fail)?;
     core.db.save_attempt_coaching(attempt.id, &coaching).map_err(fail)?;
+    // The review carries the idea a re-test is made from, so a message that settled is scheduled now.
+    core.db.schedule_retest(&id, now_ms()).map_err(fail)?;
     Ok(coaching)
 }
 
@@ -102,16 +106,52 @@ async fn save_attempt(core: Shared<'_>, id: String, text: String) -> Result<Atte
     if text.is_empty() {
         return Err("Write your version first".into());
     }
+    let tries = core.db.get_message(&id).map_err(fail)?.ok_or("That message no longer exists")?.attempts.len();
+    if tries >= MAX_TRIES {
+        return Err(format!("You already wrote {MAX_TRIES} versions of this message"));
+    }
     let mut attempt = core.db.save_attempt(&id, text, now_ms()).map_err(fail)?;
     // A Jev failure must not lose the attempt: it stays saved, just without a score.
     if let Some(screen) = screen_text(&core, text, Some(&id), None).await {
         core.db.save_attempt_screen(attempt.id, &screen).map_err(fail)?;
-        // Reaching the goal settles the message; falling short brings it back to the queue.
+        // Reaching the goal settles the message; falling short brings it back to the queue, unless it was
+        // the last try: with none left, the message settles with what the user has.
         let goal = core.db.settings().map_err(fail)?.flag_threshold;
-        core.db.settle_after_attempt(&id, screen.naturalness >= goal, now_ms()).map_err(fail)?;
+        let last_try = tries + 1 >= MAX_TRIES;
+        core.db.settle_after_attempt(&id, screen.naturalness >= goal || last_try, now_ms()).map_err(fail)?;
         attempt.screen = Some(screen);
     }
     Ok(attempt)
+}
+
+#[tauri::command]
+fn progress(core: Shared<'_>, weeks: i64) -> Result<Progress, String> {
+    let settings = core.db.settings().map_err(fail)?;
+    core.db.progress(&settings, weeks, Local::now().date_naive(), now_ms()).map_err(fail)
+}
+
+#[tauri::command]
+fn retest_queue(core: Shared<'_>) -> Result<RetestQueue, String> {
+    core.db.retest_queue(now_ms()).map_err(fail)
+}
+
+/// Scores what the user wrote from a re-test's idea and stores it. Like `save_attempt`, a Jev failure must
+/// not lose the answer: it is saved without a score.
+#[tauri::command]
+async fn save_retest(core: Shared<'_>, id: i64, text: String) -> Result<Retest, String> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err("Write your version first".into());
+    }
+    let retest = core.db.get_retest(id).map_err(fail)?.ok_or("That re-test no longer exists")?;
+    let screen = screen_text(&core, text, Some(&retest.message_id), None).await;
+    let goal = core.db.settings().map_err(fail)?.flag_threshold;
+    core.db.save_retest(id, text, screen.as_ref(), goal, now_ms()).map_err(fail)
+}
+
+#[tauri::command]
+fn postpone_retest(core: Shared<'_>, id: i64) -> Result<(), String> {
+    core.db.postpone_retest(id, now_ms()).map_err(fail)
 }
 
 /// The screen of a text the user just wrote. Text already screened under the current rubric reuses that
@@ -426,6 +466,10 @@ pub fn run() {
             get_message,
             spending,
             save_attempt,
+            progress,
+            retest_queue,
+            save_retest,
+            postpone_retest,
             set_excluded,
             mark_reviewed,
             patterns,

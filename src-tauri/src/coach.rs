@@ -64,12 +64,13 @@ fn schema() -> Value {
             "explanation": { "type": "string" },
             "tip": { "type": "string" },
             "assumption": { "type": "string" },
+            "idea": { "type": "string" },
             "issue": {
                 "type": "string",
                 "enum": ["none", "grammar", "preposition_collocation", "word_choice", "word_order", "pt_calque", "register"]
             }
         },
-        "required": ["rewrites", "explanation", "tip", "assumption", "issue"]
+        "required": ["rewrites", "explanation", "tip", "assumption", "idea", "issue"]
     })
 }
 
@@ -127,7 +128,10 @@ fn user_prompt(original: &str, attempt: &str, hint: Option<Issue>, verdict: Opti
          professional (for a manager or client). Then a short explanation of what still sounds off in the new version, \
          or why it sounds natural (two or three sentences), one reusable tip to remember, the main issue of the original, \
          and the assumption: one short sentence saying how you read any word that could mean two things \
-         (for example 'I read lead as a potential customer'), or an empty string when nothing was ambiguous."
+         (for example 'I read lead as a potential customer'), or an empty string when nothing was ambiguous. \
+         Finally the idea: one or two plain sentences saying what they meant to ask or say, as an instruction to someone else \
+         ('Ask Claude to look into deployment options. The answer is needed by tomorrow.'). Describe the meaning, not the words: \
+         do not reuse their phrasing, so that writing the message again from the idea is a real exercise. Keep the same level of detail."
     )
 }
 
@@ -138,6 +142,8 @@ struct Coached {
     tip: String,
     #[serde(default)]
     assumption: String,
+    #[serde(default)]
+    idea: String,
     issue: String,
 }
 
@@ -181,6 +187,7 @@ pub fn parse_output(stdout: &str, hint: Option<Issue>, now: i64) -> Result<Coach
         explanation: clean(coached.explanation),
         tip: clean(coached.tip),
         assumption: clean(coached.assumption),
+        idea: clean(coached.idea),
         issue: Issue::parse(&coached.issue).or(hint).unwrap_or(Issue::None),
         created_at: now,
         cost_usd: None,
@@ -326,6 +333,15 @@ mod tests {
         let with = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"x"}],"explanation":"e","tip":"t","assumption":"I read 'lead' as a potential customer","issue":"grammar"}}"#;
         assert_eq!(parse_output(with, None, 0).unwrap().assumption, "I read 'lead' as a potential customer");
         assert_eq!(parse_output(REAL, None, 0).unwrap().assumption, "");
+    }
+
+    #[test]
+    fn the_idea_is_asked_for_kept_and_defaults_to_empty() {
+        assert!(user_prompt("a", "b", None, None, "").contains("the idea"));
+        assert!(schema()["required"].as_array().unwrap().iter().any(|k| k == "idea"));
+        let with = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"x"}],"explanation":"e","tip":"t","assumption":"","idea":"Ask Claude to look into deployment options.","issue":"grammar"}}"#;
+        assert_eq!(parse_output(with, None, 0).unwrap().idea, "Ask Claude to look into deployment options.");
+        assert_eq!(parse_output(REAL, None, 0).unwrap().idea, "");
     }
 
     #[test]

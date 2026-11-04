@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, type Variants } from "motion/react";
 import { useMemo, useState } from "react";
-import { api, type Coaching, type Message, type Screen } from "../api";
+import { api, MAX_TRIES, type Coaching, type Message, type Screen } from "../api";
 import { wordDiff } from "../diff";
 import { loadDraft, storeDraft } from "../drafts";
 import { EASE, rise, stagger } from "../motion";
@@ -141,6 +141,11 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
   const coaching = message.coaching;
   const latest = attempts[attempts.length - 1];
   const latestScore = latest?.screen?.naturalness;
+
+  const triesLeft = MAX_TRIES - attempts.length;
+  const writing = !busy && (!coaching || redoing) && triesLeft > 0;
+  // Earlier reviews stay out of sight while the next try is written (or scored), so it is written from memory.
+  const blind = attempts.length > 0 && (writing || phase === "scoring");
 
   const setDraft = (text: string) => {
     setDraftText(text);
@@ -312,7 +317,14 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
           <p className="attempt-text tl-clamp">{step.text}</p>
         )}
 
-        {open && !last && step.coaching && <CoachNotes coaching={step.coaching} />}
+        {step.kind === "attempt" && blind && (
+          <p className="muted review-hidden">
+            <i className="ph ph-lock" aria-hidden="true" />
+            Review hidden while you write
+          </p>
+        )}
+
+        {!blind && open && !last && step.coaching && <CoachNotes coaching={step.coaching} />}
 
         {isLatestTry && (
           <div className="tl-attach">
@@ -363,7 +375,7 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
               )}
             </AnimatePresence>
 
-            {step.kind === "attempt" && coaching && !busy && (redoing ? <CoachNotes coaching={coaching} /> : review(coaching))}
+            {step.kind === "attempt" && coaching && !busy && !blind && review(coaching)}
           </div>
         )}
       </motion.li>
@@ -491,8 +503,6 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
     </motion.div>
   );
 
-  const writing = !busy && (!coaching || redoing);
-
   return (
     <motion.article
       className="card"
@@ -556,7 +566,17 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: EASE }}
         >
-          <label htmlFor={`draft-${message.id}`}>{attempts.length > 0 ? "Try it again" : "Say it your way"}</label>
+          <div className="try-count">
+            <label htmlFor={`draft-${message.id}`}>{attempts.length > 0 ? "Try it again" : "Say it your way"}</label>
+            <span className="try-of muted">
+              <span className="try-dots" aria-hidden="true">
+                {Array.from({ length: MAX_TRIES }, (_, i) => (
+                  <i key={i} className={i <= attempts.length ? "on" : ""} />
+                ))}
+              </span>
+              Try {attempts.length + 1} of {MAX_TRIES}
+            </span>
+          </div>
           <textarea
             id={`draft-${message.id}`}
             rows={3}
@@ -575,15 +595,22 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
               </button>
             )}
           </div>
+          {attempts.length > 0 && (
+            <p className="muted review-hidden">
+              <i className="ph ph-lock" aria-hidden="true" />
+              Review opens after you send
+            </p>
+          )}
         </motion.div>
       )}
 
-      {coaching && !redoing && !busy && (
+      {coaching && !redoing && !busy && triesLeft > 0 && (
         <button type="button" className="btn btn-ghost sm tl-again" onClick={tryAgain}>
           <i className="ph ph-arrow-counter-clockwise" aria-hidden="true" />
           Try again
         </button>
       )}
+      {coaching && !busy && triesLeft <= 0 && <p className="muted tl-again last-try">That was the last try.</p>}
 
       <footer className="card-f">
         {message.excludedAt !== null ? (

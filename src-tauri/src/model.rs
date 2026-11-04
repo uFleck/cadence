@@ -177,6 +177,12 @@ pub struct Coaching {
     /// Empty when nothing was ambiguous, and for coaching saved before this existed.
     #[serde(default)]
     pub assumption: String,
+    /// What the user meant, in one plain sentence that does not reuse the message's wording ("Ask Claude to
+    /// look into deployment options. The answer is needed by tomorrow."). It is what a re-test shows, so
+    /// the user writes the message again from the idea and not from the old text. Empty for coaching saved
+    /// before this existed; such a message gets no re-test.
+    #[serde(default)]
+    pub idea: String,
     pub issue: Issue,
     pub created_at: i64,
     /// What the `claude -p` call that wrote this coaching cost, in USD. None for coaching saved before
@@ -423,6 +429,86 @@ pub struct Patterns {
     pub weeks: Vec<WeekRow>,
     pub issue_weeks: Vec<IssueWeekRow>,
     pub coached_impact: Vec<CoachedImpact>,
+}
+
+/// The most versions a user may write of one message. The third try settles the message, goal or not.
+/// `src/api.ts` mirrors it as `MAX_TRIES`.
+pub const MAX_TRIES: usize = 3;
+
+/// A re-test settled this many days after the message settled; a missed goal brings a second one.
+pub const RETEST_FIRST_DAYS: i64 = 4;
+pub const RETEST_SECOND_DAYS: i64 = 10;
+/// What "Later" does to a due re-test.
+pub const RETEST_LATER_DAYS: i64 = 1;
+
+/// One local week (Monday start) of the progress chart.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgressWeek {
+    /// The Monday, `YYYY-MM-DD`.
+    pub week: String,
+    /// Counted messages written that week (see `counted_sql`, `Settings::min_words`).
+    pub screened: i64,
+    /// Average naturalness of what the user wrote first: the original screens of that week's messages.
+    pub first_draft: f64,
+    /// Average naturalness of the newest scored version, over that week's messages that have one. None when
+    /// no message of the week was rewritten and scored.
+    pub after_retries: Option<f64>,
+    /// How many messages `after_retries` averages.
+    pub retried: i64,
+}
+
+/// One kind of slip: flagged messages (screen below the goal, issue not none) in the last 7 days and in the 7 days before.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SlipRow {
+    pub issue: Issue,
+    pub now: i64,
+    pub before: i64,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Progress {
+    /// Oldest first; weeks with no counted message are left out. `weeks` = 0 asks for all of them.
+    pub weeks: Vec<ProgressWeek>,
+    /// Most frequent first (now, then before); issues with no flagged message in either window are left out.
+    pub slips: Vec<SlipRow>,
+    /// `Settings::flag_threshold`: the goal line.
+    pub goal: f64,
+}
+
+/// A message to write again from its idea some days after it settled.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Retest {
+    pub id: i64,
+    pub message_id: String,
+    /// `Coaching::idea` of the version that settled the message.
+    pub idea: String,
+    /// 1 for the first re-test, 2 for the one that follows a missed goal.
+    pub step: i64,
+    /// Epoch ms.
+    pub due_at: i64,
+    /// Naturalness of the message's original, for the comparison. None when unscored.
+    pub original_score: Option<f64>,
+    /// Naturalness of the newest scored version when the message settled.
+    pub settled_score: Option<f64>,
+    /// Set once the user answered.
+    pub done_at: Option<i64>,
+    pub text: Option<String>,
+    pub screen: Option<Screen>,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RetestQueue {
+    /// The re-test to show now: the oldest whose `due_at` has passed.
+    pub due: Option<Retest>,
+    /// How many are due now, including `due`.
+    pub due_count: i64,
+    /// Not yet due, soonest first, at most 5.
+    pub upcoming: Vec<Retest>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]

@@ -51,6 +51,8 @@ export interface Coaching {
   tip: string;
   /** How the coach read a word that could mean two things ("I read 'lead' as a potential customer"). Empty when nothing was ambiguous, and for older coaching. */
   assumption: string;
+  /** What the user meant, in plain words that do not reuse the message's wording. A re-test shows it. Empty for older coaching. */
+  idea: string;
   issue: Issue;
   /** Epoch ms */
   createdAt: number;
@@ -323,8 +325,76 @@ export interface Spending {
   since: number | null;
 }
 
+/** The most versions a user may write of one message. The Rust side enforces it (`MAX_TRIES`); the third try settles the message. */
+export const MAX_TRIES = 3;
+
+/** One local week (Monday start) of the progress chart. */
+export interface ProgressWeek {
+  /** The Monday, `YYYY-MM-DD`. */
+  week: string;
+  /** Counted messages written that week. */
+  screened: number;
+  /** Average naturalness of what the user wrote first (the originals of that week's messages). */
+  firstDraft: number;
+  /** Average naturalness of the newest scored version, over the week's messages that have one. Null when none. */
+  afterRetries: number | null;
+  /** How many messages `afterRetries` averages. */
+  retried: number;
+}
+
+/** One kind of slip: flagged messages in the last 7 days against the 7 days before. */
+export interface SlipRow {
+  issue: Issue;
+  now: number;
+  before: number;
+}
+
+export interface Progress {
+  /** Oldest first; weeks with no counted message are left out. */
+  weeks: ProgressWeek[];
+  /** Most frequent first. */
+  slips: SlipRow[];
+  /** `Settings.flagThreshold`: the goal line. */
+  goal: number;
+}
+
+/** A message to write again from its idea some days after it settled. */
+export interface Retest {
+  id: number;
+  messageId: string;
+  /** What the user meant, in words that do not reuse the message's wording. */
+  idea: string;
+  /** 1 for the first re-test, 2 for the one that follows a missed goal. */
+  step: number;
+  /** Epoch ms */
+  dueAt: number;
+  originalScore: number | null;
+  /** Naturalness of the newest scored version when the message settled. */
+  settledScore: number | null;
+  /** Epoch ms, set once the user answered. */
+  doneAt: number | null;
+  text: string | null;
+  screen: Screen | null;
+}
+
+export interface RetestQueue {
+  /** The oldest re-test that is due now. */
+  due: Retest | null;
+  /** How many are due now, including `due`. */
+  dueCount: number;
+  /** Not yet due, soonest first, at most 5. */
+  upcoming: Retest[];
+}
+
 export const api = {
   overview: () => invoke<Overview>("overview"),
+  /** `weeks` local weeks ending with the current one; 0 for all. */
+  progress: (weeks: number) => invoke<Progress>("progress", { weeks }),
+  retestQueue: () => invoke<RetestQueue>("retest_queue"),
+  /** Scores what the user wrote from the idea and stores it; the Retest comes back with its screen. A Jev failure saves it unscored. */
+  saveRetest: (id: number, text: string) => invoke<Retest>("save_retest", { id, text }),
+  /** "Later": the re-test comes back tomorrow. */
+  postponeRetest: (id: number) => invoke<void>("postpone_retest", { id }),
   listMessages: (query: MessageQuery) => invoke<Message[]>("list_messages", { query }),
   /** The message as it is stored now, with its attempts and their reviews. */
   getMessage: (id: string) => invoke<Message>("get_message", { id }),
@@ -332,7 +402,8 @@ export const api = {
   coachMessage: (id: string) => invoke<Coaching>("coach_message", { id }),
   /**
    * Saves a new version and scores it. Reaching `Settings.flagThreshold` marks the message reviewed;
-   * falling short puts it (back) in the queue. Read the message again to see the result.
+   * falling short puts it (back) in the queue, except the last try (`MAX_TRIES`), which settles the
+   * message whatever it scored. A fourth try is refused. Read the message again to see the result.
    */
   saveAttempt: (id: string, text: string) => invoke<Attempt>("save_attempt", { id, text }),
   spending: () => invoke<Spending>("spending"),

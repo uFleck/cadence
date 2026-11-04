@@ -1,7 +1,8 @@
 /* Dev-only stand-in for the Tauri backend, so the UI can be driven in a plain browser (`pnpm dev`).
    Twelve work messages (eight to practise, one reviewed, two not screened yet). A run is simulated and
    emits run-progress and messages-changed like the real one. `?nosetup` shows the missing-key and missing-CLI banners. */
-import type { Attempt, Coaching, DayCost, InterviewAnswer, InterviewFeedback, InterviewQuestion, InterviewTopic, Issue, KeySource, KindCost, Message, MessageQuery, Overview, Patterns, RunInfo, RunPhase, RunProgress, Screen, Settings, Spending, UsageCall, UsageKind, UsageTotals } from "../api";
+import type { Attempt, Coaching, DayCost, InterviewAnswer, InterviewFeedback, InterviewQuestion, InterviewTopic, Issue, KeySource, KindCost, Message, MessageQuery, Overview, Patterns, Progress, ProgressWeek, Retest, RetestQueue, RunInfo, RunPhase, RunProgress, Screen, Settings, SlipRow, Spending, UsageCall, UsageKind, UsageTotals } from "../api";
+import { MAX_TRIES } from "../api";
 
 type Handler = (e: { event: string; id: number; payload: unknown }) => void;
 
@@ -25,7 +26,7 @@ const screen = (naturalness: number, issue: Issue): Screen => ({
   issueConfidence: 0.8,
 });
 
-const coach = (issue: Issue, casual: string, professional: string, explanation: string, tip: string): Coaching => ({
+const coach = (issue: Issue, casual: string, professional: string, explanation: string, tip: string, idea: string): Coaching => ({
   rewrites: [
     { register: "casual", text: casual },
     { register: "professional", text: professional },
@@ -33,6 +34,7 @@ const coach = (issue: Issue, casual: string, professional: string, explanation: 
   explanation,
   tip,
   assumption: "",
+  idea,
   issue,
   createdAt: Date.now(),
   costUsd: null,
@@ -45,6 +47,7 @@ const COACH: Record<string, Coaching> = {
     "I will send you the report by the end of the day.",
     "'Until' sets a limit you reach and then stop at, but here you mean a deadline. English pairs 'by' with a deadline.",
     "Deadlines take 'by': by the end of the day, by Friday, by noon.",
+    "Tell the team when the report will be ready, before the deadline.",
   ),
   "m-deploy": coach(
     "grammar",
@@ -52,6 +55,7 @@ const COACH: Record<string, Coaching> = {
     "Could you check the deploy when you have time?",
     "'Please' goes straight before the verb, without 'to'. 'Could you' also sounds smoother in a chat.",
     "Use 'please + verb' or 'could you + verb', with no 'to' in between.",
+    "Ask a colleague to check the deploy when they have a spare moment.",
   ),
   "m-proposal/0": coach(
     "grammar",
@@ -59,6 +63,7 @@ const COACH: Record<string, Coaching> = {
     "I agree with the proposal. Let's go ahead.",
     "A comma joins two full sentences here, which is a comma splice. Use a full stop or 'so' instead.",
     "Join two full sentences with a full stop or 'so', not a bare comma.",
+    "Agree with the proposal and suggest going ahead now.",
   ),
   "m-proposal/1": coach(
     "none",
@@ -66,6 +71,7 @@ const COACH: Record<string, Coaching> = {
     "I agree with the proposal, so we can go ahead.",
     "This version sounds native: two short sentences, and 'let's go ahead' is the usual phrase in chat.",
     "Two short sentences read naturally in chat.",
+    "Agree with the proposal and suggest going ahead now.",
   ),
   "m-proposal": coach(
     "grammar",
@@ -73,6 +79,7 @@ const COACH: Record<string, Coaching> = {
     "I agree with the proposal. Let's go ahead.",
     "'Agree' is a verb in English, so it takes no 'am'. The slip usually comes from Portuguese 'estou de acordo'.",
     "Say 'I agree', not 'I am agree'. Same for 'I understand', not 'I am understand'.",
+    "Agree with the proposal and suggest going ahead now.",
   ),
   "m-pr": coach(
     "word_choice",
@@ -80,6 +87,7 @@ const COACH: Record<string, Coaching> = {
     "Could you review the PR when you get a chance?",
     "'Give a look' is a literal translation. English says 'take a look' for a quick glance, or 'review' for a real check.",
     "'Take a look' for a quick glance, 'review' for a proper check.",
+    "Ask a colleague to take a quick look at the PR when they can.",
   ),
   "m-migration": coach(
     "grammar",
@@ -87,6 +95,7 @@ const COACH: Record<string, Coaching> = {
     "I ran the migration yesterday, and it went through without issues.",
     "A finished action with a time word such as 'yesterday' takes the simple past, not the present perfect.",
     "Yesterday, last week, in 2024: simple past. 'Have done' is for things that still matter now.",
+    "Say the migration ran yesterday and that it went well.",
   ),
   "m-release": coach(
     "pt_calque",
@@ -94,6 +103,7 @@ const COACH: Record<string, Coaching> = {
     "A reminder that the release is on Friday.",
     "'Remember someone of something' is Portuguese word order carried into English. In English you remind someone.",
     "Say 'remind you that', not 'remember you that'.",
+    "Remind the team that the release is on Friday.",
   ),
   "m-asap": coach(
     "register",
@@ -101,6 +111,7 @@ const COACH: Record<string, Coaching> = {
     "Could you check this when you have a moment?",
     "Chat is informal, but 'dude' and 'asap' read as too casual when you work with clients or managers.",
     "Swap 'asap' for 'when you get a chance' or 'today if possible'.",
+    "Ask someone to check this today, without sounding rushed.",
   ),
   "m-tests": coach(
     "word_order",
@@ -108,6 +119,7 @@ const COACH: Record<string, Coaching> = {
     "The tests are failing again in the CI pipeline.",
     "The subject comes before the verb, and 'the thing is that' adds nothing. Start with the point.",
     "Start with the subject: 'The tests are failing', not 'The thing is that the tests they are failing'.",
+    "Explain that the tests fail again in CI.",
   ),
   "m-call": coach(
     "word_choice",
@@ -115,6 +127,7 @@ const COACH: Record<string, Coaching> = {
     "Could we set up a call later to sync on the roadmap?",
     "'Make a call' sounds like phoning someone. For a meeting, English says 'have a call' or 'set up a call'.",
     "For meetings: 'set up a call', 'have a call', 'jump on a call'.",
+    "Suggest a call later to sync on the roadmap.",
   ),
 };
 
@@ -489,8 +502,100 @@ export function installMock() {
     progress("done", pending.length, pending.length);
   };
 
+  // Progress: fixed weeks, oldest first (Mondays from 2026-09-15 to 2026-11-03).
+  const PROGRESS_WEEKS: ProgressWeek[] = [
+    { week: "2026-09-15", screened: 24, firstDraft: 1.4, afterRetries: 2.8, retried: 3 },
+    { week: "2026-09-22", screened: 31, firstDraft: 1.5, afterRetries: 2.9, retried: 6 },
+    { week: "2026-09-29", screened: 27, firstDraft: 1.4, afterRetries: 2.8, retried: 5 },
+    { week: "2026-10-06", screened: 35, firstDraft: 1.7, afterRetries: null, retried: 0 },
+    { week: "2026-10-13", screened: 29, firstDraft: 1.8, afterRetries: 2.9, retried: 4 },
+    { week: "2026-10-20", screened: 33, firstDraft: 1.7, afterRetries: 3.0, retried: 8 },
+    { week: "2026-10-27", screened: 38, firstDraft: 2.0, afterRetries: 2.9, retried: 6 },
+    { week: "2026-11-03", screened: 26, firstDraft: 2.2, afterRetries: 3.0, retried: 5 },
+  ];
+  const PROGRESS_SLIPS: SlipRow[] = [
+    { issue: "register", now: 7, before: 7 },
+    { issue: "grammar", now: 3, before: 9 },
+    { issue: "pt_calque", now: 0, before: 4 },
+  ];
+  const progressReport = (weeks: number): Progress => ({
+    weeks: (weeks > 0 ? PROGRESS_WEEKS.slice(-weeks) : PROGRESS_WEEKS).map((w) => ({ ...w })),
+    slips: PROGRESS_SLIPS.map((s) => ({ ...s })),
+    goal: 2.5,
+  });
+
+  // Re-tests: kept in memory. A re-test is due once `dueAt` has passed and it is not answered (`doneAt`).
+  let retestSeq = 1;
+  const retests: Retest[] = [
+    {
+      id: retestSeq++,
+      messageId: "m-deploy",
+      idea: "Ask Claude to look into deployment options. The answer is needed by tomorrow.",
+      step: 1,
+      dueAt: Date.now() - HOUR,
+      originalScore: 1.2,
+      settledScore: 2.4,
+      doneAt: null,
+      text: null,
+      screen: null,
+    },
+    {
+      id: retestSeq++,
+      messageId: "m-release",
+      idea: "Tell the team the release is on Friday, so they can plan around it.",
+      step: 1,
+      dueAt: Date.now() + 2 * DAY,
+      originalScore: 1.1,
+      settledScore: null,
+      doneAt: null,
+      text: null,
+      screen: null,
+    },
+    {
+      id: retestSeq++,
+      messageId: "m-pr",
+      idea: "Ask a colleague to review the PR when they have a spare moment.",
+      step: 1,
+      dueAt: Date.now() + 6 * DAY,
+      originalScore: 1.9,
+      settledScore: null,
+      doneAt: null,
+      text: null,
+      screen: null,
+    },
+  ];
+  const findRetest = (id: unknown) => {
+    const r = retests.find((x) => x.id === id && x.doneAt === null);
+    if (!r) throw new Error(`mock: no open re-test ${String(id)}`);
+    return r;
+  };
+  const retestQueue = (): RetestQueue => {
+    const now = Date.now();
+    const open = retests.filter((r) => r.doneAt === null).sort((a, b) => a.dueAt - b.dueAt);
+    const dueNow = open.filter((r) => r.dueAt <= now);
+    return {
+      due: dueNow[0] ? { ...dueNow[0] } : null,
+      dueCount: dueNow.length,
+      upcoming: open.filter((r) => r.dueAt > now).slice(0, 5).map((r) => ({ ...r })),
+    };
+  };
+
   const commands: Record<string, (a: Record<string, unknown>) => unknown> = {
     overview,
+    progress: (a) => progressReport(Number(a.weeks)),
+    retest_queue: retestQueue,
+    save_retest: (a) => {
+      const r = findRetest(a.id);
+      const text = String(a.text).trim();
+      if (!text) throw "Write your version first";
+      r.text = text;
+      r.screen = screen(2.4, "none");
+      r.doneAt = Date.now();
+      return { ...r };
+    },
+    postpone_retest: (a) => {
+      findRetest(a.id).dueAt = Date.now() + DAY;
+    },
     list_messages: async (a) => (await sleep(150), list(a.query as MessageQuery)),
     get_message: (a) => {
       const m = messages.find((x) => x.id === a.id);
@@ -524,6 +629,7 @@ export function installMock() {
     },
     save_attempt: (a) => {
       const m = find(a.id);
+      if (m.attempts.length >= MAX_TRIES) throw new Error(`You already wrote ${MAX_TRIES} versions of this message`);
       const text = String(a.text);
       // Stands in for the Jev score: deterministic, 0 to 3, from the text length.
       const score = Math.min(3, (text.length % 31) / 10);
@@ -531,8 +637,9 @@ export function installMock() {
       m.attempts.push(attempt);
       syncCoaching(m);
       // Reaching the flag threshold counts as reviewed; falling short puts the message back in the queue.
+      // The last allowed try settles the message whatever its score.
       const goal = settings.flagThreshold;
-      if (score >= goal) {
+      if (score >= goal || m.attempts.length >= MAX_TRIES) {
         if (m.reviewedAt === null) m.reviewedAt = Date.now();
       } else {
         m.reviewedAt = null;

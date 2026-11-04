@@ -97,6 +97,20 @@ CREATE TABLE IF NOT EXISTS ai_usage (
     ok INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ai_usage_at ON ai_usage(at);
+CREATE TABLE IF NOT EXISTS retests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    idea TEXT NOT NULL,
+    step INTEGER NOT NULL,
+    due_at INTEGER NOT NULL,
+    original_score REAL,
+    settled_score REAL,
+    done_at INTEGER,
+    text TEXT,
+    screen TEXT
+);
+CREATE INDEX IF NOT EXISTS retests_due ON retests(done_at, due_at);
+CREATE INDEX IF NOT EXISTS retests_message ON retests(message_id);
 ";
 
 const QUESTION_SELECT: &str = "
@@ -117,7 +131,7 @@ LEFT JOIN coaching c ON c.message_id = m.id
 /// The screens whose naturalness means something: English, written by the user, and not set aside by hand
 /// as unfit for practice. A screen saved before `prose` existed has no value, so it is left out until the
 /// next run screens it again.
-fn counted_sql() -> String {
+pub(crate) fn counted_sql() -> String {
     format!("s.english >= {MIN_ENGLISH} AND s.prose >= {MIN_PROSE} AND m.excluded_at IS NULL")
 }
 
@@ -283,7 +297,7 @@ impl Db {
         Ok(Db { conn: Mutex::new(conn) })
     }
 
-    fn conn(&self) -> MutexGuard<'_, Connection> {
+    pub(crate) fn conn(&self) -> MutexGuard<'_, Connection> {
         self.conn.lock().unwrap_or_else(|e| e.into_inner())
     }
 
@@ -962,6 +976,7 @@ fn read_message(r: &Row) -> Result<Message> {
                 explanation: r.get(13)?,
                 tip: r.get(14)?,
                 assumption: String::new(),
+                idea: String::new(),
                 issue: Issue::parse(&issue).unwrap_or(Issue::None),
                 created_at: r.get(16)?,
                 cost_usd: None,
@@ -1146,7 +1161,7 @@ mod tests {
     }
 
     fn review(tip: &str, cost: Option<f64>) -> Coaching {
-        Coaching { rewrites: vec![], explanation: String::new(), tip: tip.into(), assumption: String::new(), issue: Issue::Grammar, created_at: 9, cost_usd: cost }
+        Coaching { rewrites: vec![], explanation: String::new(), tip: tip.into(), assumption: String::new(), idea: String::new(), issue: Issue::Grammar, created_at: 9, cost_usd: cost }
     }
 
     #[test]
@@ -1405,6 +1420,7 @@ mod tests {
             explanation: String::new(),
             tip: String::new(),
             assumption: String::new(),
+            idea: String::new(),
             issue: Issue::Grammar,
             created_at,
             cost_usd: None,
@@ -1479,7 +1495,7 @@ mod tests {
         db.save_screen("x", &screen(0.95, 0.9, 1.2), "t", 1).unwrap();
         db.save_coaching(
             "x",
-            &Coaching { rewrites: vec![], explanation: String::new(), tip: String::new(), assumption: String::new(), issue: Issue::Grammar, created_at: 1, cost_usd: None },
+            &Coaching { rewrites: vec![], explanation: String::new(), tip: String::new(), assumption: String::new(), idea: String::new(), issue: Issue::Grammar, created_at: 1, cost_usd: None },
         )
         .unwrap();
         db.save_attempt("x", "my attempt", 1).unwrap();
