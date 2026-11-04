@@ -1064,7 +1064,7 @@ mod tests {
             native: Some(0.1),
             rubric: RUBRIC,
             confidence: 0.5,
-            issue: Issue::Grammar,
+            issue: Issue::AgreementTense,
             issue_confidence: 0.5,
             slip: None,
         }
@@ -1161,7 +1161,7 @@ mod tests {
     }
 
     fn review(tip: &str, cost: Option<f64>) -> Coaching {
-        Coaching { rewrites: vec![], explanation: String::new(), tip: tip.into(), assumption: String::new(), idea: String::new(), issue: Issue::Grammar, created_at: 9, cost_usd: cost }
+        Coaching { rewrites: vec![], explanation: String::new(), tip: tip.into(), assumption: String::new(), idea: String::new(), issue: Issue::AgreementTense, created_at: 9, cost_usd: cost }
     }
 
     #[test]
@@ -1421,7 +1421,7 @@ mod tests {
             tip: String::new(),
             assumption: String::new(),
             idea: String::new(),
-            issue: Issue::Grammar,
+            issue: Issue::AgreementTense,
             created_at,
             cost_usd: None,
         };
@@ -1495,7 +1495,7 @@ mod tests {
         db.save_screen("x", &screen(0.95, 0.9, 1.2), "t", 1).unwrap();
         db.save_coaching(
             "x",
-            &Coaching { rewrites: vec![], explanation: String::new(), tip: String::new(), assumption: String::new(), idea: String::new(), issue: Issue::Grammar, created_at: 1, cost_usd: None },
+            &Coaching { rewrites: vec![], explanation: String::new(), tip: String::new(), assumption: String::new(), idea: String::new(), issue: Issue::AgreementTense, created_at: 1, cost_usd: None },
         )
         .unwrap();
         db.save_attempt("x", "my attempt", 1).unwrap();

@@ -122,9 +122,9 @@ function Spark({ rows, threshold }: { rows: TrendRow[]; threshold: number }) {
           initial={reduce ? false : { scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 420, damping: 18, delay: base + (rows.length > 1 ? (draw * i) / (rows.length - 1) : 0.2) }}
-        >
-          <title>{`${short(rows[i].day)}: ${rows[i].avgNaturalness.toFixed(1)} of 3`}</title>
-        </motion.circle>
+          data-tip={`${short(rows[i].day)}: ${rows[i].avgNaturalness.toFixed(1)} of 3`}
+          aria-label={`${short(rows[i].day)}: ${rows[i].avgNaturalness.toFixed(1)} of 3`}
+        />
       ))}
       <text x={pts[0][0]} y={H - 4} textAnchor={rows.length === 1 ? "middle" : "start"}>
         {short(rows[0].day)}

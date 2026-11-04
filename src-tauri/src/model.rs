@@ -4,39 +4,73 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum Issue {
     None,
-    Grammar,
-    PrepositionCollocation,
-    WordChoice,
+    Articles,
+    AgreementTense,
+    Typo,
+    MissingWord,
+    Preposition,
+    AwkwardPhrasing,
     WordOrder,
     PtCalque,
     Register,
+    /// Keys Jev and the coach used before the split into the variants above. Never asked for any more;
+    /// they stay so rows stored earlier still read (and show as "older" in the UI).
+    Grammar,
+    PrepositionCollocation,
+    WordChoice,
 }
 
 impl Issue {
     pub fn key(self) -> &'static str {
         match self {
             Issue::None => "none",
-            Issue::Grammar => "grammar",
-            Issue::PrepositionCollocation => "preposition_collocation",
-            Issue::WordChoice => "word_choice",
+            Issue::Articles => "articles",
+            Issue::AgreementTense => "agreement_tense",
+            Issue::Typo => "typo",
+            Issue::MissingWord => "missing_word",
+            Issue::Preposition => "preposition",
+            Issue::AwkwardPhrasing => "awkward_phrasing",
             Issue::WordOrder => "word_order",
             Issue::PtCalque => "pt_calque",
             Issue::Register => "register",
+            Issue::Grammar => "grammar",
+            Issue::PrepositionCollocation => "preposition_collocation",
+            Issue::WordChoice => "word_choice",
         }
     }
 
     pub fn parse(key: &str) -> Option<Issue> {
         Some(match key {
             "none" => Issue::None,
-            "grammar" => Issue::Grammar,
-            "preposition_collocation" => Issue::PrepositionCollocation,
-            "word_choice" => Issue::WordChoice,
+            "articles" => Issue::Articles,
+            "agreement_tense" => Issue::AgreementTense,
+            "typo" => Issue::Typo,
+            "missing_word" => Issue::MissingWord,
+            "preposition" => Issue::Preposition,
+            "awkward_phrasing" => Issue::AwkwardPhrasing,
             "word_order" => Issue::WordOrder,
             "pt_calque" => Issue::PtCalque,
             "register" => Issue::Register,
+            "grammar" => Issue::Grammar,
+            "preposition_collocation" => Issue::PrepositionCollocation,
+            "word_choice" => Issue::WordChoice,
             _ => return None,
         })
     }
+
+    /// The issues Jev and the coach are asked to choose from.
+    pub const ASKED: [Issue; 10] = [
+        Issue::None,
+        Issue::Articles,
+        Issue::AgreementTense,
+        Issue::Typo,
+        Issue::MissingWord,
+        Issue::Preposition,
+        Issue::AwkwardPhrasing,
+        Issue::WordOrder,
+        Issue::PtCalque,
+        Issue::Register,
+    ];
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]

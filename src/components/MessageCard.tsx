@@ -53,7 +53,7 @@ type Step = {
 function CostChip({ coaching }: { coaching: Coaching }) {
   if (coaching.costUsd === null) return null;
   return (
-    <span className="cost-chip" title="What this review cost at Claude's list prices. On a subscription you are not charged this amount.">
+    <span className="cost-chip" data-tip="What this review cost at Claude's list prices. On a subscription you are not charged this amount.">
       <i className="ph ph-coins" aria-hidden="true" />
       {usd(coaching.costUsd)}
     </span>
@@ -279,7 +279,7 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
       <>
         <span className="trail-label">{step.label}</span>
         {step.createdAt !== null && (
-          <span className="muted tl-when" title={new Date(step.createdAt).toLocaleString()}>
+          <span className="muted tl-when" data-tip={new Date(step.createdAt).toLocaleString()}>
             {ago(step.createdAt)}
           </span>
         )}
@@ -511,7 +511,7 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
       transition={{ duration: 0.4, ease: EASE }}
     >
       <header className="card-h">
-        <span className="card-meta" title={new Date(message.ts).toLocaleString()}>
+        <span className="card-meta" data-tip={new Date(message.ts).toLocaleString()}>
           {message.project ?? "No project"} · sent {ago(message.ts)}
         </span>
         {currentScreen && <IssueChip issue={currentScreen.issue} />}
@@ -630,7 +630,7 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
                 type="button"
                 className="btn btn-ghost"
                 disabled={settingAside}
-                title="Pasted text or file names make this read oddly: leave it out of the queue and the scores"
+                data-tip="Pasted text or file names make this read oddly: leave it out of the queue and the scores"
                 onClick={() => void setExcluded(true)}
               >
                 <i className="ph ph-prohibit" aria-hidden="true" />
@@ -645,7 +645,7 @@ export function MessageCard({ message, notify, onChange, onReviewed, onExcluded 
                   type="button"
                   className={`btn btn-ghost${marking ? " is-done" : ""}`}
                   disabled={marking}
-                  title={latestScore !== undefined ? "Take it out of the queue although the last version is below your goal" : undefined}
+                  data-tip={latestScore !== undefined ? "Take it out of the queue although the last version is below your goal" : undefined}
                   onClick={() => void markReviewed()}
                 >
                   <motion.i

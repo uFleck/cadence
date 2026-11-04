@@ -81,9 +81,17 @@ function DayChart({ days }: { days: Spending["days"] }) {
           const yTop = d.costUsd > 0 ? y(d.costUsd) : y(0) - 1;
           const label = `${shortDay(d.day)}: ${usd(d.costUsd)}, ${plural(d.claudeCalls, "Claude call")}, ${plural(d.jevCalls, "screen")}`;
           return (
-            <rect key={d.day} className={`sp-bar${d.costUsd > 0 ? "" : " zero"}`} x={x} y={yTop} width={barW} height={y(0) - yTop} rx={2}>
-              <title>{label}</title>
-            </rect>
+            <rect
+              key={d.day}
+              className={`sp-bar${d.costUsd > 0 ? "" : " zero"}`}
+              x={x}
+              y={yTop}
+              width={barW}
+              height={y(0) - yTop}
+              rx={2}
+              data-tip={label}
+              aria-label={label}
+            />
           );
         })}
         {first && (
@@ -109,7 +117,7 @@ function CallRow({ c }: { c: UsageCall }) {
   return (
     <tr>
       <td>
-        <time dateTime={new Date(c.at).toISOString()} title={stamp(c.at)}>
+        <time dateTime={new Date(c.at).toISOString()} data-tip={stamp(c.at)}>
           {ago(c.at)}
         </time>
       </td>
@@ -118,7 +126,7 @@ function CallRow({ c }: { c: UsageCall }) {
         {c.preview === null ? (
           <span className="muted">(deleted message)</span>
         ) : (
-          <span className="sp-preview" title={c.preview}>
+          <span className="sp-preview" data-tip={c.preview}>
             {c.preview}
           </span>
         )}

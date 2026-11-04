@@ -190,14 +190,18 @@ fn questions() -> Value {
         },
         "issue": {
             "type": "choice",
-            "instructions": "The main thing that makes the `state` sound non-native, in a message a software engineer typed to a coding agent. Pick none if it sounds native. Punctuation at the end, capitalisation and quoted tool names are not issues.",
+            "instructions": "The main thing that makes the `state` sound non-native, in a message a software engineer typed to a coding agent. Pick none if it sounds native. Punctuation at the end, capitalisation and quoted tool names are not issues. \
+                Pick the single most noticeable problem. Misspellings, typos and missing apostrophes (dont, theres, its for it's) are only `typo`, never grammar.",
             "criteria": {
                 "none": "Sounds native",
-                "grammar": "Wrong or missing articles, tenses, plurals or agreement",
-                "preposition_collocation": "Wrong preposition or an unusual word pairing",
-                "word_choice": "A word that is correct but not the one a native speaker would use",
-                "word_order": "Unusual order of words or clauses",
-                "pt_calque": "Literal translation of a Portuguese expression",
+                "typo": "A misspelled word, a typo or a missing apostrophe, with the wording otherwise fine",
+                "articles": "A missing, extra or wrong article (a, an, the) or determiner (any, some, this)",
+                "agreement_tense": "A verb that does not agree with its subject, a wrong or inconsistent verb tense or form, or a wrong plural or countable/uncountable noun",
+                "missing_word": "A word left out of the sentence (a subject, verb, object or particle) so that it reads as incomplete, apart from a dropped article",
+                "preposition": "A wrong, missing or extra preposition (in/on/at/to/for/of/with) or phrasal-verb particle",
+                "awkward_phrasing": "Wording that reads as awkward or non-native without one clear slip to name: a word that is correct but not the one a native speaker would use, a verb, noun or adjective paired with a word a native speaker would not use with it, or a redundant word",
+                "word_order": "Unusual order of words or clauses, including a question word order kept inside a statement",
+                "pt_calque": "A Portuguese expression or structure translated word for word",
                 "register": "Too formal, too stiff or too blunt for a work chat"
             }
         }
@@ -238,7 +242,7 @@ fn slip(answers: &Value) -> Result<Option<(Issue, f64)>, String> {
     let confidence = answer.get("confidence").and_then(Value::as_f64).ok_or("answer `slip` has no `confidence`")?;
     let issue = match choice {
         "none" => return Ok(None),
-        "false_friend" => Issue::WordChoice,
+        "false_friend" => Issue::AwkwardPhrasing,
         "calque" => Issue::PtCalque,
         "register" => Issue::Register,
         other => return Err(format!("unknown slip `{other}`")),
@@ -325,11 +329,11 @@ mod tests {
                 "is_prose": { "type": "noul", "noul": 0.84 },
                 "is_native": { "type": "noul", "noul": 0.12 },
                 "naturalness": { "type": "score", "score": 1.28, "confidence": 0.67, "probabilities": {} },
-                "issue": { "type": "choice", "choice": "preposition_collocation", "confidence": 0.36, "probabilities": {} }
+                "issue": { "type": "choice", "choice": "preposition", "confidence": 0.36, "probabilities": {} }
             }
         });
         let s = parse_screen(&body).unwrap();
-        assert_eq!(s.issue, Issue::PrepositionCollocation);
+        assert_eq!(s.issue, Issue::Preposition);
         assert!((s.naturalness - 1.28).abs() < 1e-9);
         assert!((s.english - 0.91).abs() < 1e-9);
         assert!((s.prose - 0.84).abs() < 1e-9);
@@ -368,7 +372,7 @@ mod tests {
             issue_confidence: 0.5,
             slip: None,
         };
-        assert_eq!(with_rules(s(2.3, Issue::WordChoice)).naturalness, 2.3);
+        assert_eq!(with_rules(s(2.3, Issue::AwkwardPhrasing)).naturalness, 2.3);
         assert_eq!(with_rules(s(MIN_TOP_FROM - 0.1, Issue::None)).naturalness, MIN_TOP_FROM - 0.1);
         assert_eq!(with_rules(s(MIN_TOP_FROM, Issue::None)).naturalness, TOP_SCORE);
     }
@@ -389,7 +393,7 @@ mod tests {
         };
         let caught = with_rules(parse_screen(&body(MIN_SLIP)).unwrap());
         assert_eq!(caught.naturalness, SLIP_SCORE);
-        assert_eq!(caught.issue, Issue::WordChoice);
+        assert_eq!(caught.issue, Issue::AwkwardPhrasing);
         let unsure = with_rules(parse_screen(&body(MIN_SLIP - 0.01)).unwrap());
         assert_eq!(unsure.naturalness, TOP_SCORE);
         assert_eq!(unsure.issue, Issue::None);
@@ -445,16 +449,9 @@ mod tests {
     fn every_issue_key_is_a_question_option() {
         let q = questions();
         let options = q["issue"]["criteria"].as_object().unwrap();
-        for issue in [
-            Issue::None,
-            Issue::Grammar,
-            Issue::PrepositionCollocation,
-            Issue::WordChoice,
-            Issue::WordOrder,
-            Issue::PtCalque,
-            Issue::Register,
-        ] {
+        for issue in Issue::ASKED {
             assert!(options.contains_key(issue.key()), "{}", issue.key());
         }
+        assert_eq!(options.len(), Issue::ASKED.len());
     }
 }

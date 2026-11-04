@@ -42,7 +42,7 @@ const coach = (issue: Issue, casual: string, professional: string, explanation: 
 
 const COACH: Record<string, Coaching> = {
   "m-report": coach(
-    "preposition_collocation",
+    "preposition",
     "I'll send you the report by the end of the day.",
     "I will send you the report by the end of the day.",
     "'Until' sets a limit you reach and then stop at, but here you mean a deadline. English pairs 'by' with a deadline.",
@@ -50,7 +50,7 @@ const COACH: Record<string, Coaching> = {
     "Tell the team when the report will be ready, before the deadline.",
   ),
   "m-deploy": coach(
-    "grammar",
+    "agreement_tense",
     "Could you check the deploy when you have a moment?",
     "Could you check the deploy when you have time?",
     "'Please' goes straight before the verb, without 'to'. 'Could you' also sounds smoother in a chat.",
@@ -58,7 +58,7 @@ const COACH: Record<string, Coaching> = {
     "Ask a colleague to check the deploy when they have a spare moment.",
   ),
   "m-proposal/0": coach(
-    "grammar",
+    "agreement_tense",
     "I agree with the proposal, so let's go ahead.",
     "I agree with the proposal. Let's go ahead.",
     "A comma joins two full sentences here, which is a comma splice. Use a full stop or 'so' instead.",
@@ -74,7 +74,7 @@ const COACH: Record<string, Coaching> = {
     "Agree with the proposal and suggest going ahead now.",
   ),
   "m-proposal": coach(
-    "grammar",
+    "agreement_tense",
     "I agree with the proposal, let's go ahead.",
     "I agree with the proposal. Let's go ahead.",
     "'Agree' is a verb in English, so it takes no 'am'. The slip usually comes from Portuguese 'estou de acordo'.",
@@ -82,7 +82,7 @@ const COACH: Record<string, Coaching> = {
     "Agree with the proposal and suggest going ahead now.",
   ),
   "m-pr": coach(
-    "word_choice",
+    "awkward_phrasing",
     "Can you take a look at the PR when you get a chance?",
     "Could you review the PR when you get a chance?",
     "'Give a look' is a literal translation. English says 'take a look' for a quick glance, or 'review' for a real check.",
@@ -90,7 +90,7 @@ const COACH: Record<string, Coaching> = {
     "Ask a colleague to take a quick look at the PR when they can.",
   ),
   "m-migration": coach(
-    "grammar",
+    "agreement_tense",
     "I ran the migration yesterday and it worked well.",
     "I ran the migration yesterday, and it went through without issues.",
     "A finished action with a time word such as 'yesterday' takes the simple past, not the present perfect.",
@@ -122,7 +122,7 @@ const COACH: Record<string, Coaching> = {
     "Explain that the tests fail again in CI.",
   ),
   "m-call": coach(
-    "word_choice",
+    "awkward_phrasing",
     "Can we find a time later to sync on the roadmap?",
     "Could we set up a call later to sync on the roadmap?",
     "'Make a call' sounds like phoning someone. For a meeting, English says 'have a call' or 'set up a call'.",
@@ -144,11 +144,11 @@ interface Seed {
 }
 
 const SEEDS: Seed[] = [
-  { id: "m-report", text: "I will send you the report until the end of the day.", hours: 2, project: "billing-api", screen: screen(1.2, "preposition_collocation") },
-  { id: "m-deploy", text: "Please to check the deploy when you have time.", hours: 5, project: "web-app", screen: screen(0.8, "grammar"), coached: true, attempts: ["Please check the deploy when you get a moment."] },
-  { id: "m-proposal", text: "I am agree with the proposal, let's go ahead.", hours: 9, project: "web-app", screen: screen(1.4, "grammar"), attempts: ["I agree with the proposal, let's go ahead.", "I agree with the proposal. Let's go ahead."] },
-  { id: "m-pr", text: "Can you give a look at the PR when you can?", hours: 14, project: "ops", screen: screen(1.9, "word_choice"), source: "history" },
-  { id: "m-migration", text: "Yesterday I have made the migration and it worked well.", hours: 20, project: "billing-api", screen: screen(1.6, "grammar") },
+  { id: "m-report", text: "I will send you the report until the end of the day.", hours: 2, project: "billing-api", screen: screen(1.2, "preposition") },
+  { id: "m-deploy", text: "Please to check the deploy when you have time.", hours: 5, project: "web-app", screen: screen(0.8, "agreement_tense"), coached: true, attempts: ["Please check the deploy when you get a moment."] },
+  { id: "m-proposal", text: "I am agree with the proposal, let's go ahead.", hours: 9, project: "web-app", screen: screen(1.4, "agreement_tense"), attempts: ["I agree with the proposal, let's go ahead.", "I agree with the proposal. Let's go ahead."] },
+  { id: "m-pr", text: "Can you give a look at the PR when you can?", hours: 14, project: "ops", screen: screen(1.9, "awkward_phrasing"), source: "history" },
+  { id: "m-migration", text: "Yesterday I have made the migration and it worked well.", hours: 20, project: "billing-api", screen: screen(1.6, "agreement_tense") },
   { id: "m-release", text: "I am remembering you that the release is on Friday.", hours: 26, project: "web-app", screen: screen(1.1, "pt_calque") },
   { id: "m-asap", text: "Hey dude, can you check it asap?", hours: 30, project: "ops", screen: screen(1.8, "register") },
   { id: "m-tests", text: "The thing is that the tests they are failing again in the CI.", hours: 36, project: "billing-api", screen: screen(1.3, "word_order") },
@@ -160,7 +160,7 @@ const SEEDS: Seed[] = [
 
 /** Screens the pending messages get when a run reads them. */
 const PENDING_SCREEN: Record<string, Screen> = {
-  "m-call": screen(1.9, "word_choice"),
+  "m-call": screen(1.9, "awkward_phrasing"),
   "m-lunch": screen(2.9, "none"),
 };
 
@@ -183,7 +183,7 @@ const FEEDBACKS: InterviewFeedback[] = [
     spoken: "I would run the service in containers behind a load balancer, spread across at least two availability zones, and let an autoscaling group add instances when CPU goes up. The database would be managed, with a replica in another zone for failover.",
     englishNotes: "Some sentences ran together and a few words came from Portuguese word order. Shorter sentences will sound clearer when you speak.",
     tip: "Say 'spread across two zones', not 'spread in two zones'.",
-    issue: "preposition_collocation",
+    issue: "preposition",
     depth: 3,
     depthNotes: "You named the right pieces, but gave no trade-offs and no example from real work.",
     missing: ["Health checks and how traffic drains during a deploy", "How you would test the failover", "Cost trade-off of running in several zones"],
@@ -194,7 +194,7 @@ const FEEDBACKS: InterviewFeedback[] = [
     spoken: "I usually write unit tests for business rules, because they are fast and precise. Then I add a few integration tests against a real database to check that the pieces fit together.",
     englishNotes: "Mostly clear. 'Make a test' should be 'write a test', and the verb tenses drifted between past and present.",
     tip: "Tests are written or run, not made.",
-    issue: "word_choice",
+    issue: "awkward_phrasing",
     depth: 4,
     depthNotes: "Good split with a reason for each level. A concrete example would push it to a 5.",
     missing: ["Contract tests between services", "What you do not test, and why"],
@@ -515,7 +515,7 @@ export function installMock() {
   ];
   const PROGRESS_SLIPS: SlipRow[] = [
     { issue: "register", now: 7, before: 7 },
-    { issue: "grammar", now: 3, before: 9 },
+    { issue: "articles", now: 3, before: 9 },
     { issue: "pt_calque", now: 0, before: 4 },
   ];
   const progressReport = (weeks: number): Progress => ({
@@ -735,7 +735,7 @@ export function installMock() {
       const answer = findAnswer(a.id);
       if (answer.feedback && !a.force) return { ...answer };
       const words = wordCount(answer.text);
-      answer.screen = SETUP_MISSING ? null : screen(Math.min(3, 0.8 + words / 40), words > 40 ? "none" : "grammar");
+      answer.screen = SETUP_MISSING ? null : screen(Math.min(3, 0.8 + words / 40), words > 40 ? "none" : "agreement_tense");
       const q = findQuestion(answer.questionId);
       answer.feedback = { ...FEEDBACKS[q.id % FEEDBACKS.length], depth: Math.min(5, 1 + Math.floor(words / 25)), createdAt: Date.now() };
       refreshQuestion(q);

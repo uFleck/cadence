@@ -115,7 +115,7 @@ function WeekRowCells({
       {cells.map(({ week, n, s }, col) => {
         const r = rate(n, s);
         return (
-          <span key={week} className="week-cell" title={`${label}, week of ${week}: ${n} of ${s} screened`}>
+          <span key={week} className="week-cell" data-tip={`${label}, week of ${week}: ${n} of ${s} screened`}>
             <motion.span
               className="week-bar"
               variants={cellBarV}
@@ -284,12 +284,11 @@ export function PatternsView({ version, notify }: { version: number; notify: Not
                     width={step}
                     height={H - PAD.t - PAD.b}
                     tabIndex={0}
+                    aria-label={`${t.day}: ${t.avgNaturalness.toFixed(2)} from ${t.count} messages. 7-day average ${rolling[i].toFixed(2)}`}
                     onPointerEnter={() => setHover(i)}
                     onFocus={() => setHover(i)}
                     onBlur={() => setHover(null)}
-                  >
-                    <title>{`${t.day}: ${t.avgNaturalness.toFixed(2)} from ${t.count} messages. 7-day average ${rolling[i].toFixed(2)}`}</title>
-                  </rect>
+                  />
                 ))}
               </motion.svg>
               <AnimatePresence>
@@ -398,7 +397,7 @@ export function PatternsView({ version, notify }: { version: number; notify: Not
               <div className="week-grid" style={{ gridTemplateColumns: `150px repeat(${weeks.length}, minmax(34px, 1fr))` }}>
                 <span />
                 {weeks.map((w) => (
-                  <span key={w.week} className="week-head" title={`Week of ${w.week}, ${w.screened} screened`}>
+                  <span key={w.week} className="week-head" data-tip={`Week of ${w.week}, ${w.screened} screened`}>
                     {w.week.slice(5)}
                   </span>
                 ))}

@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, onMessagesChanged, onRunProgress, type Overview, type RunProgress } from "./api";
 import { NoticeDialog } from "./components/Dialog";
+import { Tooltip } from "./components/Tooltip";
 import { Interview } from "./components/Interview";
 import { MessageList } from "./components/MessageList";
 import { PatternsView } from "./components/Patterns";
@@ -220,6 +221,8 @@ export default function App() {
       <AnimatePresence>
         {notice && <NoticeDialog key="notice" title={notice.title} lead={notice.lead} onClose={closeNotice} />}
       </AnimatePresence>
+
+      <Tooltip />
     </div>
   );
 }

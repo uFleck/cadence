@@ -131,10 +131,10 @@ mod tests {
         let db = open("weeks");
         let s = db.settings().unwrap();
         // 2026-11-01 is a Sunday, 2026-11-02 a Monday.
-        add(&db, "a", noon(2026, 10, 26), 1.0, Issue::Grammar); // Mon, week 10-26
-        add(&db, "b", noon(2026, 11, 1), 2.0, Issue::Grammar); // Sun, week 10-26
+        add(&db, "a", noon(2026, 10, 26), 1.0, Issue::AgreementTense); // Mon, week 10-26
+        add(&db, "b", noon(2026, 11, 1), 2.0, Issue::AgreementTense); // Sun, week 10-26
         add(&db, "c", noon(2026, 11, 2), 3.0, Issue::None); // Mon, week 11-02
-        add(&db, "d", noon(2026, 10, 14), 0.5, Issue::Grammar); // Wed, week 10-12
+        add(&db, "d", noon(2026, 10, 14), 0.5, Issue::AgreementTense); // Wed, week 10-12
         let today = NaiveDate::from_ymd_opt(2026, 11, 4).unwrap();
         let now = noon(2026, 11, 4);
 
@@ -155,8 +155,8 @@ mod tests {
     fn after_retries_uses_the_newest_scored_attempt_of_the_current_rubric() {
         let db = open("retries");
         let s = db.settings().unwrap();
-        add(&db, "a", noon(2026, 11, 2), 1.0, Issue::Grammar);
-        add(&db, "b", noon(2026, 11, 3), 1.0, Issue::Grammar);
+        add(&db, "a", noon(2026, 11, 2), 1.0, Issue::AgreementTense);
+        add(&db, "b", noon(2026, 11, 3), 1.0, Issue::AgreementTense);
         let today = NaiveDate::from_ymd_opt(2026, 11, 4).unwrap();
         let now = noon(2026, 11, 4);
 
@@ -190,20 +190,20 @@ mod tests {
         let low = s.flag_threshold - 0.5;
         let today = NaiveDate::from_ymd_opt(2026, 11, 4).unwrap();
 
-        add(&db, "n1", now - day, low, Issue::Grammar);
-        add(&db, "n2", now - 2 * day, low, Issue::Grammar);
-        add(&db, "b1", now - 8 * day, low, Issue::Grammar);
-        add(&db, "only_before1", now - 9 * day, low, Issue::Grammar);
+        add(&db, "n1", now - day, low, Issue::AgreementTense);
+        add(&db, "n2", now - 2 * day, low, Issue::AgreementTense);
+        add(&db, "b1", now - 8 * day, low, Issue::AgreementTense);
+        add(&db, "only_before1", now - 9 * day, low, Issue::AgreementTense);
         add(&db, "none_issue", now - day, low, Issue::None);
-        add(&db, "high", now - day, s.flag_threshold + 0.1, Issue::Grammar);
-        add(&db, "excluded", now - day, low, Issue::Grammar);
+        add(&db, "high", now - day, s.flag_threshold + 0.1, Issue::AgreementTense);
+        add(&db, "excluded", now - day, low, Issue::AgreementTense);
         db.set_excluded("excluded", Some(1)).unwrap();
-        add(&db, "too_old", now - 15 * day, low, Issue::Grammar);
-        add(&db, "future", now + day, low, Issue::Grammar);
+        add(&db, "too_old", now - 15 * day, low, Issue::AgreementTense);
+        add(&db, "future", now + day, low, Issue::AgreementTense);
 
         let p = db.progress(&s, 0, today, now).unwrap();
         assert_eq!(p.slips.len(), 1);
-        assert_eq!(p.slips[0].issue.key(), Issue::Grammar.key());
+        assert_eq!(p.slips[0].issue.key(), Issue::AgreementTense.key());
         assert_eq!(p.slips[0].now, 2);
         assert_eq!(p.slips[0].before, 2);
     }
@@ -216,9 +216,9 @@ mod tests {
         let day = 86_400_000;
         let low = s.flag_threshold - 0.5;
         let today = NaiveDate::from_ymd_opt(2026, 11, 4).unwrap();
-        add(&db, "g1", now - day, low, Issue::Grammar);
-        add(&db, "o1", now - 8 * day, low, Issue::WordChoice);
-        add(&db, "o2", now - 9 * day, low, Issue::WordChoice);
+        add(&db, "g1", now - day, low, Issue::AgreementTense);
+        add(&db, "o1", now - 8 * day, low, Issue::AwkwardPhrasing);
+        add(&db, "o2", now - 9 * day, low, Issue::AwkwardPhrasing);
 
         let p = db.progress(&s, 0, today, now).unwrap();
         assert_eq!(p.slips.len(), 2);

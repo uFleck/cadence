@@ -3,21 +3,34 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export type Issue =
   | "none"
-  | "grammar"
-  | "preposition_collocation"
-  | "word_choice"
+  | "articles"
+  | "agreement_tense"
+  | "typo"
+  | "missing_word"
+  | "preposition"
+  | "awkward_phrasing"
   | "word_order"
   | "pt_calque"
-  | "register";
+  | "register"
+  // Kept so rows screened before the split still read; never produced by a new screen.
+  | "grammar"
+  | "preposition_collocation"
+  | "word_choice";
 
 export const ISSUE_LABEL: Record<Issue, string> = {
   none: "Sounds native",
-  grammar: "Grammar",
-  preposition_collocation: "Preposition or word pairing",
-  word_choice: "Word choice",
+  articles: "Articles (a, the)",
+  agreement_tense: "Agreement or tense",
+  typo: "Typos and apostrophes",
+  missing_word: "Missing word",
+  preposition: "Preposition",
+  awkward_phrasing: "Awkward wording",
   word_order: "Word order",
   pt_calque: "Portuguese-style phrasing",
   register: "Tone for a work chat",
+  grammar: "Grammar (older)",
+  preposition_collocation: "Preposition or word pairing (older)",
+  word_choice: "Word choice (older)",
 };
 
 export interface Screen {

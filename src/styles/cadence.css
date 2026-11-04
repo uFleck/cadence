@@ -311,9 +311,32 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 0; 
 .status .next { margin-left: auto; color: var(--muted); }
 .status .upd { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 0; border-radius: var(--r); background: transparent; color: var(--muted); font: inherit; cursor: pointer; transition: background var(--fast) var(--ease), color var(--fast) var(--ease); }
 .status .upd:hover:not(:disabled) { background: var(--line); color: var(--ink); }
-.status .upd:disabled { cursor: default; }
+.status .upd:disabled { cursor: default; pointer-events: none; }
 .status .upd.ready { color: var(--accent); }
 .status .upd.bad { color: var(--bad); }
+.upd-wrap { position: relative; display: inline-flex; }
+.upd-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 40;
+  width: min(380px, calc(100vw - 32px));
+  padding: 18px 20px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  color: var(--ink);
+  white-space: normal;
+  transform-origin: 100% 100%;
+}
+.upd-panel h3 { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 12px; font: 500 20px var(--serif); }
+.upd-panel h3 b { padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 600 12px var(--sans); font-variant-numeric: tabular-nums; }
+.upd-panel ul { max-height: 240px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.upd-panel li { position: relative; padding: 8px 0 8px 16px; border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.upd-panel li:first-child { border-top: 0; }
+.upd-panel li::before { content: ""; position: absolute; left: 1px; top: 15px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.upd-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .upd-ico { position: relative; display: inline-flex; }
 .upd-dot { position: absolute; top: -2px; right: -2px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 .status-progress {
@@ -475,6 +498,25 @@ textarea {
 }
 textarea:focus-visible { border-color: var(--accent); }
 textarea:disabled { opacity: 0.6; }
+
+/* ───────── tooltip (the only one; see Tooltip.tsx) ───────── */
+.tip {
+  position: fixed;
+  z-index: 60;
+  max-width: 280px;
+  padding: 7px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.45;
+  pointer-events: none;
+  animation: tip-in var(--fast) var(--ease);
+}
+@keyframes tip-in { from { opacity: 0; transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .tip { animation: none; } }
 
 /* ───────── dialog ───────── */
 .dlg-scrim {

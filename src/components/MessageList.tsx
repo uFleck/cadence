@@ -126,11 +126,11 @@ export function MessageList({ version, notify }: { version: number; notify: Noti
                     <span className="row-meta">
                       <span className="row-when">
                         {ago(m.ts)}
-                        {m.reviewedAt !== null && <i className="ph ph-check-circle row-done" role="img" aria-label="Reviewed" title="Reviewed" />}
+                        {m.reviewedAt !== null && <i className="ph ph-check-circle row-done" role="img" aria-label="Reviewed" data-tip="Reviewed" />}
                       </span>
                       <span className="row-scores">
                         {m.screen && m.attempts[m.attempts.length - 1]?.screen?.rubric === m.screen.rubric && (
-                          <span className="row-tries" title="Original score, then the latest version's">
+                          <span className="row-tries" data-tip="Original score, then the latest version's">
                             {m.screen.naturalness.toFixed(1)} → {(currentScore(m) ?? m.screen.naturalness).toFixed(1)}
                           </span>
                         )}

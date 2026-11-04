@@ -86,10 +86,29 @@ export async function restart() {
   }
 }
 
+/** `?update-demo` in a dev browser offers a made-up release so the update panel can be styled. */
+export const UPDATE_DEMO = import.meta.env.DEV && new URLSearchParams(window.location.search).has("update-demo");
+
 let started = false;
 
 /** Checks shortly after launch, then every half hour. Only in a packaged app, never in dev or a browser. */
 export function startUpdateChecks() {
+  if (UPDATE_DEMO && !started) {
+    started = true;
+    set({
+      kind: "available",
+      version: "0.7.0",
+      notes: [
+        "* Track first drafts, write retries blind with a cap, and re-test after a few days",
+        "* Show a message and its tries as one timeline with a diff against the previous try",
+        "* Let the coach read the user's own work terms as defined",
+        "* Give the coach Jev's verdict and fold long score trails",
+        "",
+        "**Full Changelog**: https://github.com/uFleck/cadence/compare/v0.6.0...v0.7.0",
+      ].join("\n"),
+    });
+    return;
+  }
   if (started || !inTauri || !import.meta.env.PROD) return;
   started = true;
   const tick = () => void checkForUpdates();

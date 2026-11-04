@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { type Overview, type RunPhase, type RunProgress } from "../api";
 import { CountUp, EASE } from "../motion";
+import { UPDATE_DEMO } from "../updater";
 import { UpdateButton } from "./UpdateButton";
 import { ago, when } from "./shared";
 
@@ -65,14 +66,14 @@ export function StatusBar({
         </span>
       ) : (
         run && (
-          <span className={`run${run.ok ? "" : " bad"}`} title={run.detail}>
+          <span className={`run${run.ok ? "" : " bad"}`} data-tip={run.detail}>
             <i className={run.ok ? "ph ph-check-circle" : "ph-fill ph-warning"} aria-hidden="true" />
             Last run {run.ok ? "ok" : "failed"}, {ago(run.startedAt)}
           </span>
         )
       )}
       <span className="next">Next run {when(overview.nextRunAt)}</span>
-      {import.meta.env.PROD && <UpdateButton busy={running} />}
+      {(import.meta.env.PROD || UPDATE_DEMO) && <UpdateButton busy={running} />}
       <button type="button" className="btn btn-ghost sm" disabled={running} onClick={onRunNow}>
         <i className="ph ph-play" aria-hidden="true" />
         Run now

@@ -190,7 +190,7 @@ mod tests {
             native: Some(0.1),
             rubric: RUBRIC,
             confidence: 0.5,
-            issue: Issue::Grammar,
+            issue: Issue::AgreementTense,
             issue_confidence: 0.5,
             slip: None,
         }
@@ -203,7 +203,7 @@ mod tests {
             tip: String::new(),
             assumption: String::new(),
             idea: idea.into(),
-            issue: Issue::Grammar,
+            issue: Issue::AgreementTense,
             created_at: 1,
             cost_usd: None,
         }

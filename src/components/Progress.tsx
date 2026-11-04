@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ISSUE_LABEL, type Progress as ProgressData, type ProgressWeek } from "../api";
 import { Practice } from "./Practice";
 import { errorText, SAME_SCORE, type Notify } from "./shared";
@@ -27,7 +27,6 @@ const monthDay = (iso: string) => parseDay(iso).toLocaleDateString(undefined, { 
 const fmt = (n: number) => n.toFixed(1);
 
 function Chart({ weeks, goal }: { weeks: ProgressWeek[]; goal: number }) {
-  const titleId = useId();
   const values = weeks.flatMap((w) => (w.afterRetries === null ? [w.firstDraft] : [w.firstDraft, w.afterRetries]));
   const yMin = Math.max(0, Math.floor(Math.min(...values) * 2) / 2 - 0.5);
   const y = (v: number) => Y_BOT - ((v - yMin) / (MAX - yMin)) * (Y_BOT - Y_TOP);
@@ -81,8 +80,7 @@ function Chart({ weeks, goal }: { weeks: ProgressWeek[]; goal: number }) {
   const lastX = x(weeks.length - 1);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby={titleId} className="pg-svg">
-      <title id={titleId}>{summary}</title>
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} className="pg-svg">
       {ticks.map((t) => (
         <g key={t}>
           <line className={t === yMin ? "pg-axis" : "pg-grid"} x1={X0} x2={X1} y1={y(t)} y2={y(t)} />

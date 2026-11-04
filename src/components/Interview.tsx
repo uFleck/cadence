@@ -505,7 +505,7 @@ function History({ answers }: { answers: InterviewAnswer[] }) {
           return (
             <li key={a.id} className={isOpen ? "open" : undefined}>
               <button type="button" className="iv-h-head" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : a.id)}>
-                <span className="iv-h-when" title={when(a.createdAt)}>
+                <span className="iv-h-when" data-tip={when(a.createdAt)}>
                   {ago(a.createdAt)}
                 </span>
                 <span>{clock(a.seconds)}</span>

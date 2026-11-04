@@ -72,7 +72,7 @@ pub fn schema() -> Value {
             "tip": { "type": "string" },
             "issue": {
                 "type": "string",
-                "enum": ["none", "grammar", "preposition_collocation", "word_choice", "word_order", "pt_calque", "register"]
+                "enum": ["none", "articles", "agreement_tense", "typo", "missing_word", "preposition", "awkward_phrasing", "word_order", "pt_calque", "register"]
             },
             "depth": { "type": "integer", "minimum": 1, "maximum": 5 },
             "depthNotes": { "type": "string" },
@@ -91,7 +91,7 @@ pub fn user_prompt(topic: InterviewTopic, question: &str, answer: &str) -> Strin
          Do not add technical points; anything missing goes in `missing`. Conversational, not written-essay style.\n\
          - englishNotes: two or three sentences on what sounded off in the English. Name the Portuguese pattern behind it when there is one.\n\
          - tip: one reusable phrase or rule.\n\
-         - issue: the main English issue, one of none, grammar, preposition_collocation, word_choice, word_order, pt_calque, register.\n\
+         - issue: the main English issue, one of none, articles, agreement_tense, typo, missing_word, preposition, awkward_phrasing, word_order, pt_calque, register.\n\
          - depth: an integer from 1 to 5. 1 = vague or wrong. 2 = definitions only. 3 = correct, with some how and why. \
          4 = trade-offs and a concrete example from experience. \
          5 = senior-level: trade-offs, failure modes, and when they would choose otherwise. \

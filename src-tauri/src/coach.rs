@@ -67,7 +67,7 @@ fn schema() -> Value {
             "idea": { "type": "string" },
             "issue": {
                 "type": "string",
-                "enum": ["none", "grammar", "preposition_collocation", "word_choice", "word_order", "pt_calque", "register"]
+                "enum": ["none", "articles", "agreement_tense", "typo", "missing_word", "preposition", "awkward_phrasing", "word_order", "pt_calque", "register"]
             }
         },
         "required": ["rewrites", "explanation", "tip", "assumption", "idea", "issue"]
@@ -275,21 +275,21 @@ pub async fn run_claude(claude: &Path, cwd: &Path, system: &str, schema: &Value,
 mod tests {
     use super::*;
 
-    const REAL: &str = r#"{"is_error":false,"result":"{\"rewrites\":[{\"register\":\"casual\",\"text\":\"I'll send you the report by the end of the day.\"},{\"register\":\"professional\",\"text\":\"I will send you the report by end of day.\"}],\"explanation\":\"Use by, not until.\",\"tip\":\"By marks a deadline.\",\"issue\":\"preposition_collocation\"}"}"#;
+    const REAL: &str = r#"{"is_error":false,"result":"{\"rewrites\":[{\"register\":\"casual\",\"text\":\"I'll send you the report by the end of the day.\"},{\"register\":\"professional\",\"text\":\"I will send you the report by end of day.\"}],\"explanation\":\"Use by, not until.\",\"tip\":\"By marks a deadline.\",\"issue\":\"preposition\"}"}"#;
 
     #[test]
     fn parses_the_result_string_of_a_real_envelope() {
         let c = parse_output(REAL, None, 5).unwrap();
         assert_eq!(c.rewrites.len(), 2);
         assert_eq!(c.rewrites[0].register, "casual");
-        assert_eq!(c.issue, Issue::PrepositionCollocation);
+        assert_eq!(c.issue, Issue::Preposition);
         assert_eq!(c.created_at, 5);
     }
 
     #[test]
     fn prefers_structured_output_when_present() {
-        let env = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"x"}],"explanation":"e","tip":"t","issue":"grammar"},"result":"ignored"}"#;
-        assert_eq!(parse_output(env, None, 0).unwrap().issue, Issue::Grammar);
+        let env = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"x"}],"explanation":"e","tip":"t","issue":"agreement_tense"},"result":"ignored"}"#;
+        assert_eq!(parse_output(env, None, 0).unwrap().issue, Issue::AgreementTense);
     }
 
     #[test]
@@ -300,7 +300,7 @@ mod tests {
 
     #[test]
     fn drops_the_backslash_the_model_puts_before_a_quote() {
-        let env = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"say \\\"hi\\\""}],"explanation":"The problem is \\\"take this\\\".","tip":"Use \\\"look at\\\".","issue":"grammar"}}"#;
+        let env = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"say \\\"hi\\\""}],"explanation":"The problem is \\\"take this\\\".","tip":"Use \\\"look at\\\".","issue":"agreement_tense"}}"#;
         let c = parse_output(env, None, 0).unwrap();
         assert_eq!(c.rewrites[0].text, "say \"hi\"");
         assert_eq!(c.explanation, "The problem is \"take this\".");
@@ -330,7 +330,7 @@ mod tests {
 
     #[test]
     fn the_assumption_is_kept_and_defaults_to_empty() {
-        let with = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"x"}],"explanation":"e","tip":"t","assumption":"I read 'lead' as a potential customer","issue":"grammar"}}"#;
+        let with = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"x"}],"explanation":"e","tip":"t","assumption":"I read 'lead' as a potential customer","issue":"agreement_tense"}}"#;
         assert_eq!(parse_output(with, None, 0).unwrap().assumption, "I read 'lead' as a potential customer");
         assert_eq!(parse_output(REAL, None, 0).unwrap().assumption, "");
     }
@@ -339,7 +339,7 @@ mod tests {
     fn the_idea_is_asked_for_kept_and_defaults_to_empty() {
         assert!(user_prompt("a", "b", None, None, "").contains("the idea"));
         assert!(schema()["required"].as_array().unwrap().iter().any(|k| k == "idea"));
-        let with = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"x"}],"explanation":"e","tip":"t","assumption":"","idea":"Ask Claude to look into deployment options.","issue":"grammar"}}"#;
+        let with = r#"{"is_error":false,"structured_output":{"rewrites":[{"register":"casual","text":"x"}],"explanation":"e","tip":"t","assumption":"","idea":"Ask Claude to look into deployment options.","issue":"agreement_tense"}}"#;
         assert_eq!(parse_output(with, None, 0).unwrap().idea, "Ask Claude to look into deployment options.");
         assert_eq!(parse_output(REAL, None, 0).unwrap().idea, "");
     }
